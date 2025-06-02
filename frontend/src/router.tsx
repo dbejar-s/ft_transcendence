@@ -6,8 +6,9 @@ import Tournament from './pages/Tournament';
 import Game from './pages/Game';
 import Score from './pages/Score';
 import About from './pages/About';
-import Register from './pages/Registration';;
+import Register from './pages/Registration';
 import NotFound from './pages/NotFound';
+import SignUp from './pages/SignUp';
 import Header from './components/Header';
 import Footer from './components/Footer'
 
@@ -58,6 +59,7 @@ function AnimatedRoutes({
     { path: '/score', element: <Score /> },
     { path: '/about', element: <About /> },
     { path: '/register', element: <Register /> },
+    { path: '/signup', element: <SignUp /> },
   ];
 
   return (
