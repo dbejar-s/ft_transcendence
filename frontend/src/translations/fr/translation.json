@@ -1,0 +1,25 @@
+{
+  "logoutMessage": "Tu as été déconnecté.",
+  "welcomeTitle": "Bienvenue sur TRANSCENPONG",
+  "welcomeDescription": "Participe à des tournois, défie tes amis dans des combats de pong intenses et grimpe en tête du classement.",
+  "playNow": "Jouer",
+  "playNowAria": "Commencer à jouer",
+  "arcadeAlt": "Arcade",
+  "register": "INSCRIPTION",
+  "about": "À PROPOS",
+  "game": "JEU",
+  "score": "SCORE",
+  "tournaments": "TOURNOIS",
+  "logout": "DÉCONNEXION",
+  "logoutConfirm": "Es-tu sûr de vouloir te déconnecter ?",
+  "aboutTitle": "À propos",
+  "aboutDescription": "Le but principal de ce site est de jouer à Pong contre d'autres joueurs. Les utilisateurs peuvent participer à un match en direct directement sur le site, deux joueurs utilisant le même clavier. Un système de tournoi permet à plusieurs joueurs de s'affronter tour à tour. Chaque participant doit s'enregistrer avec un alias au début d'un tournoi, et un système de matchmaking organise les matchs. Le jeu respecte l'esthétique du Pong original (1972). Ce projet, ft_transcendence, fait partie du curriculum à Hive Helsinki (école 42).",
+  "projectBy": "Réalisé par :",
+  "notFound": "Oops!",
+  "sorryNotFound": "La page que vous recherchez semble être introuvable.",
+  "home": "Retour à l'accueil",
+  "howToPlayTitle": "Comment jouer",
+  "howToPlayText": "Utilise les touches fléchées ou ZQSD pour déplacer ta raquette. Marque des points pour gagner !",
+  "startGame": "Commencer le jeu"
+
+}
