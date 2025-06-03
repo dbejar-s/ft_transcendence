@@ -2,11 +2,11 @@ import { FaGithub } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 
 const teamMembers = [
-  { name: 'David', github: 'https://github.com/' },
-  { name: 'David', github: 'https://github.com/' },
-  { name: 'Ilmari', github: 'https://github.com/' },
+  { name: 'David', github: 'https://github.com/davidbarren' },
+  { name: 'David', github: 'https://github.com/dbejar-s' },
+  { name: 'Ilmari', github: 'https://github.com/ilmu23' },
   { name: 'Juliette', github: 'https://github.com/juliettemtte' },
-  { name: 'Uygar', github: 'https://github.com/' },
+  { name: 'Uygar', github: 'https://github.com/uygarpolat' },
 ];
 
 export default function Footer() {
