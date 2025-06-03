@@ -8,7 +8,7 @@
   "register": "REGISTER",
   "about": "ABOUT",
   "game": "GAME",
-  "score": "SCORE",
+  "profile": "PROFILE",
   "tournaments": "TOURNAMENTS",
   "logout": "LOGOUT",
   "logoutConfirm": "Are you sure you want to log out?",
@@ -33,5 +33,14 @@
   "passwordMismatch": "Passwords do not match",
   "signUpSuccess": "Sign up successful, you can now log in.",
   "signUpError": "Error during sign up",
-  "loading": "Loading..." 
+  "loading": "Loading...",
+  "completeProfile": "Complete Your Profile",
+  "chooseUsername": "Choose a username",
+  "chooseAvatar": "Choose an avatar or upload an image",
+  "preferredLanguage": "Preferred language",
+  "finish": "Finish",
+  "profileCompletionError": "There was an error completing your profile.",
+  "uploadImage": "Upload an image",
+  "invalidImageFormat": "Only image files are allowed.",
+  "imageTooLarge": "Image size exceeds 2 MB."
 }

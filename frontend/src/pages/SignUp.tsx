@@ -34,6 +34,11 @@ export default function SignUp() {
       setLoading(false);
     }
   };
+  const handleGoogleLogin = () => {
+    // TODO: Add Google Sign-up logic
+    console.log('Sign up via Google');
+  };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#44433e] text-[#FFFACD] p-6">
@@ -80,6 +85,24 @@ export default function SignUp() {
             {loading ? t('loading') : t('signUp')}
           </button>
         </form>
+		<div className="flex items-center my-4">
+		<hr className="flex-grow border-[#FFFACD]" />
+		<span className="mx-3 text-sm">{t('or') || 'OR'}</span>
+		<hr className="flex-grow border-[#FFFACD]" />
+		</div>
+
+		<button
+		onClick={handleGoogleLogin}
+		className="w-full bg-white text-[#3b3a37] py-3 rounded-lg font-semibold hover:bg-gray-100 transition"
+		>
+		<img
+			src="https://developers.google.com/identity/images/g-logo.png"
+			alt="Google logo"
+			className="inline w-5 h-5 mr-2 align-middle"
+		/>
+		{t('continueWithGoogle') || 'Continue with Google'}
+		</button>
+
       </div>
     </div>
   );

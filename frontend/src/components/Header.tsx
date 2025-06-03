@@ -1,7 +1,14 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { LogOut } from 'lucide-react';
 
-export default function Header({ isLoggedIn, setIsLoggedIn, setShowLogoutMsg }) {
+interface HeaderProps {
+  isLoggedIn: boolean;
+  setIsLoggedIn: (value: boolean) => void;
+  setShowLogoutMsg: (value: boolean) => void;
+}
+
+export default function Header({ isLoggedIn, setIsLoggedIn, setShowLogoutMsg }: HeaderProps) {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
 
@@ -12,8 +19,8 @@ export default function Header({ isLoggedIn, setIsLoggedIn, setShowLogoutMsg }) 
 
   const userLinks = [
     { path: '/game', label: t('game') },
-    { path: '/score', label: t('score') },
     { path: '/tournament', label: t('tournaments') },
+    { path: '/profile', label: t('profile') },
   ];
 
   const handleLogout = () => {
@@ -53,14 +60,14 @@ export default function Header({ isLoggedIn, setIsLoggedIn, setShowLogoutMsg }) 
         ))}
 
         {isLoggedIn && (
-          <div
-            onClick={handleLogout}
-            className="inline-flex items-center px-4 py-0.5 rounded-lg hover:border-[#FFFACD] hover:border-2 transition cursor-pointer"
-            style={{ color: '#FFFACD', backgroundColor: 'transparent' }}
-            aria-label={t('logout')}
-          >
-            {t('logout')}
-          </div>
+		  <div
+		  onClick={handleLogout}
+		  className="inline-flex items-center px-4 py-0.5 rounded-lg hover:border-[#FFFACD] hover:border-2 transition cursor-pointer"
+		  style={{ color: '#FFFACD', backgroundColor: 'transparent' }}
+		  aria-label={t('logout')}
+		  >
+		  <LogOut size={28} />
+		  </div>
         )}
 
         {/* Language Switcher */}

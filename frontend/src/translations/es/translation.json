@@ -8,7 +8,7 @@
   "register": "REGISTRO",
   "about": "ACERCA DE",
   "game": "JUEGO",
-  "score": "PUNTUACIÓN",
+  "profile": "PERFIL",
   "tournaments": "TORNEOS",
   "logout": "CERRAR SESIÓN",
   "logoutConfirm": "¿Estás seguro de que quieres cerrar sesión?",
@@ -33,5 +33,14 @@
   "passwordMismatch": "Las contraseñas no coinciden",
   "signUpSuccess": "Registro exitoso, ahora puede iniciar sesión.",
   "signUpError": "Error durante el registro",
-  "loading": "Cargando..."
+  "loading": "Cargando...",
+  "completeProfile": "Completa tu perfil",
+  "chooseUsername": "Elige un nombre de usuario",
+  "chooseAvatar": "Elige un avatar o sube una imagen",
+  "preferredLanguage": "Idioma preferido",
+  "finish": "Terminar",
+  "profileCompletionError": "Ocurrió un error al completar el perfil.",
+  "uploadImage": "Sube una imagen",
+  "invalidImageFormat": "Solo se permiten archivos de imagen.",
+  "imageTooLarge": "El tamaño de la imagen supera los 2 MB."
 }

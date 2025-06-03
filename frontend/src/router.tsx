@@ -4,7 +4,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Home from './pages/Home';
 import Tournament from './pages/Tournament';
 import Game from './pages/Game';
-import Score from './pages/Score';
+import Profile from './pages/Profile/Profile';
+import CompleteProfile from './pages/Profile/CompleteProfile';
 import About from './pages/About';
 import Register from './pages/Registration';
 import NotFound from './pages/NotFound';
@@ -56,10 +57,11 @@ function AnimatedRoutes({
     { path: '/', element: <Home showLogoutMsg={showLogoutMsg} setShowLogoutMsg={setShowLogoutMsg} /> },
     { path: '/tournament', element: <Tournament /> },
     { path: '/game', element: <Game /> },
-    { path: '/score', element: <Score /> },
+    { path: '/profile', element: <Profile /> },
     { path: '/about', element: <About /> },
     { path: '/register', element: <Register /> },
     { path: '/signup', element: <SignUp /> },
+    { path: '/completeprofile', element: <CompleteProfile /> },
   ];
 
   return (

@@ -8,7 +8,7 @@
   "register": "INSCRIPTION",
   "about": "À PROPOS",
   "game": "JEU",
-  "score": "SCORE",
+  "profile": "PROFIL",
   "tournaments": "TOURNOIS",
   "logout": "DÉCONNEXION",
   "logoutConfirm": "Es-tu sûr de vouloir te déconnecter ?",
@@ -33,5 +33,14 @@
   "passwordMismatch": "Les mots de passe ne correspondent pas",
   "signUpSuccess": "Inscription réussie, vous pouvez maintenant vous connecter.",
   "signUpError": "Erreur lors de l'inscription",
-  "loading": "Chargement..."
+  "loading": "Chargement...",
+  "completeProfile": "Complétez votre profil",
+  "chooseUsername": "Choisissez un nom d'utilisateur",
+  "chooseAvatar": "Choisissez un avatar ou téléversez une image",
+  "preferredLanguage": "Langue préférée",
+  "finish": "Terminer",
+  "profileCompletionError": "Une erreur est survenue lors de la création du profil.",
+  "uploadImage": "Téléversez une image",
+  "invalidImageFormat": "Seuls les fichiers image sont autorisés.",
+  "imageTooLarge": "L’image dépasse 2 Mo."
 }
