@@ -20,6 +20,18 @@
   "home": "Retour à l'accueil",
   "howToPlayTitle": "Comment jouer",
   "howToPlayText": "Utilise les touches fléchées ou ZQSD pour déplacer ta raquette. Marque des points pour gagner !",
-  "startGame": "Commencer le jeu"
-
+  "startGame": "Commencer le jeu",
+  "registerTitle": "Connexion / Inscription",
+  "email": "Adresse e-mail",
+  "password": "Mot de passe",
+  "login": "Connexion",
+  "noAccount": "Pas encore de compte ?",
+  "signUp": "Inscrivez-vous",
+  "or": "OU",
+  "continueWithGoogle": "Continuer avec Google",
+  "confirmPassword": "Confirmer le mot de passe",
+  "passwordMismatch": "Les mots de passe ne correspondent pas",
+  "signUpSuccess": "Inscription réussie, vous pouvez maintenant vous connecter.",
+  "signUpError": "Erreur lors de l'inscription",
+  "loading": "Chargement..."
 }

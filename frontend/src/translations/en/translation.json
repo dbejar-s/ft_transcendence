@@ -20,5 +20,18 @@
   "home": "Go to home page",
   "howToPlayTitle": "How to play",
   "howToPlayText": "Use the arrow keys or ZQSD to move your paddle. Score points to win!",
-  "startGame": "Start the game"
+  "startGame": "Start the game",
+  "registerTitle": "Login / Register",
+  "email": "Email address",
+  "password": "Password",
+  "login": "Login",
+  "noAccount": "Don't have an account?",
+  "signUp": "Sign up",
+  "or": "OR",
+  "continueWithGoogle": "Continue with Google" ,
+  "confirmPassword": "Confirm Password",
+  "passwordMismatch": "Passwords do not match",
+  "signUpSuccess": "Sign up successful, you can now log in.",
+  "signUpError": "Error during sign up",
+  "loading": "Loading..." 
 }
