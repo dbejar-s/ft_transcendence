@@ -1,97 +1,31 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import women1 from '../../assets/Profile/women1.png';
-import women2 from '../../assets/Profile/women2.png';
-import men1 from '../../assets/Profile/men1.png';
-import men2 from '../../assets/Profile/men2.png';
+import { predefinedAvatars, handleAvatarUpload, submitProfile} from '../../components/ProfileUtils';
+import type { AvatarType } from '../../components/ProfileUtils';
 
 export default function CompleteProfile() {
   const { t, i18n } = useTranslation();
   const [username, setUsername] = useState('');
-  const [avatar, setAvatar] = useState<string | File | null>(null);
+  const [avatar, setAvatar] = useState<AvatarType>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [language, setLanguage] = useState(i18n.language || 'en');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Predefined avatars available for selection
-  const predefinedAvatars = [
-    { src: women1, alt: 'women1' },
-    { src: women2, alt: 'women2' },
-    { src: men1, alt: 'men1' },
-    { src: men2, alt: 'men2' },
-  ];
-
-  // Handle file input change for avatar upload
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-
-    if (!file) {
-      // If no file is selected, clear avatar and preview
-      setAvatar(null);
-      setPreviewUrl(null);
-      return;
-    }
-
-    // Check if the file is an image
-    if (!file.type.startsWith('image/')) {
-      setError(t('invalidImageFormat') || 'Only image files are allowed.');
-      setAvatar(null);
-      setPreviewUrl(null);
-      return;
-    }
-
-    // Check file size (max 2MB)
-    const maxSize = 2 * 1024 * 1024; // 2 MB
-    if (file.size > maxSize) {
-      setError(t('imageTooLarge') || 'Image size exceeds 2 MB.');
-      setAvatar(null);
-      setPreviewUrl(null);
-      return;
-    }
-
-    // Clear any previous errors and set the selected file
-    setError(null);
-    setAvatar(file);
-
-    // Create a preview URL using FileReader
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPreviewUrl(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
-
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setLoading(true);
-
-    try {
-      const formData = new FormData();
-      formData.append('username', username);
-      formData.append('language', language);
-
-      if (avatar instanceof File) {
-        formData.append('avatar', avatar);
-      } else if (typeof avatar === 'string') {
-        formData.append('avatarUrl', avatar);
-      }
-
-      const res = await fetch('/api/users/complete-profile', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!res.ok) throw new Error('Username already taken or other error');
-
-      i18n.changeLanguage(language);
+    const success = await submitProfile(
+      username,
+      language,
+      avatar,
+      setError,
+      setLoading,
+      t
+    );
+    
+    if (success) {
       window.location.href = '/home';
-    } catch (err) {
-      setError(t('profileCompletionError') || 'Could not complete profile.');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -145,7 +79,7 @@ export default function CompleteProfile() {
           id="avatar-upload"
           type="file"
           accept="image/*"
-          onChange={handleAvatarUpload}
+          onChange={(e) => handleAvatarUpload(e, setAvatar, setPreviewUrl, setError, t)}
           className="hidden"
         />
 

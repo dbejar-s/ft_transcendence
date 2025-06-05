@@ -36,11 +36,16 @@
   "loading": "Loading...",
   "completeProfile": "Complete Your Profile",
   "chooseUsername": "Choose a username",
+  "chooseNewUsername": "New username",
   "chooseAvatar": "Choose an avatar or upload an image",
   "preferredLanguage": "Preferred language",
   "finish": "Finish",
   "profileCompletionError": "There was an error completing your profile.",
   "uploadImage": "Upload an image",
   "invalidImageFormat": "Only image files are allowed.",
-  "imageTooLarge": "Image size exceeds 2 MB."
+  "imageTooLarge": "Image size exceeds 2 MB.",
+  "friends": "Friends",
+  "matchHistory": "Match History",
+  "statistics": "Statistics",
+  "enterNewPassword": "Enter a new password"
 }

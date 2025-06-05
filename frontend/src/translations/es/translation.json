@@ -36,11 +36,16 @@
   "loading": "Cargando...",
   "completeProfile": "Completa tu perfil",
   "chooseUsername": "Elige un nombre de usuario",
+  "chooseNewUsername": "Nuevo nombre de usuario",
   "chooseAvatar": "Elige un avatar o sube una imagen",
   "preferredLanguage": "Idioma preferido",
   "finish": "Terminar",
   "profileCompletionError": "Ocurrió un error al completar el perfil.",
   "uploadImage": "Sube una imagen",
   "invalidImageFormat": "Solo se permiten archivos de imagen.",
-  "imageTooLarge": "El tamaño de la imagen supera los 2 MB."
+  "imageTooLarge": "El tamaño de la imagen supera los 2 MB.",
+  "friends": "Amigos",
+  "matchHistory": "Historial de partidas",
+  "statistics": "Estadísticas",
+  "enterNewPassword": "Introduce una nueva contraseña"
 }

@@ -36,11 +36,16 @@
   "loading": "Chargement...",
   "completeProfile": "Complétez votre profil",
   "chooseUsername": "Choisissez un nom d'utilisateur",
+  "chooseNewUsername": "Nouveau nom d'utilisateur",
   "chooseAvatar": "Choisissez un avatar ou téléversez une image",
   "preferredLanguage": "Langue préférée",
   "finish": "Terminer",
   "profileCompletionError": "Une erreur est survenue lors de la création du profil.",
   "uploadImage": "Téléversez une image",
   "invalidImageFormat": "Seuls les fichiers image sont autorisés.",
-  "imageTooLarge": "L’image dépasse 2 Mo."
+  "imageTooLarge": "L’image dépasse 2 Mo.",
+  "friends": "Amis",
+  "matchHistory": "Historique des matchs",
+  "statistics": "Statistiques",
+  "enterNewPassword": "Entrer un nouveau mot de passe"
 }
