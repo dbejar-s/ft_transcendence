@@ -1,12 +1,18 @@
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect } from 'firebase/auth'; // Import necessary Firebase Auth functions
+import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'; // Import necessary Firebase Auth functions
 
 // Declare google as a global object to avoid TypeScript errors
 declare const google: any;
 
-export default function Register({ setIsLoggedIn, setGlobalMessage }) {
+// Define props interface for clarity and type safety
+interface RegisterProps {
+  setIsLoggedIn: (value: boolean) => void;
+  setGlobalMessage: (value: { type: 'success' | 'error'; text: string } | null) => void;
+}
+
+export default function Register({ setIsLoggedIn, setGlobalMessage }: RegisterProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -16,11 +22,17 @@ export default function Register({ setIsLoggedIn, setGlobalMessage }) {
   // Get the Firebase Auth instance
   const auth = getAuth(); // Firebase app should be initialized in main.tsx
 
+  // Debugging: Log the value of setIsLoggedIn received by Registration component
+  console.log("Registration: setIsLoggedIn prop received:", setIsLoggedIn);
+
+
   // useEffect hook to initialize Google Identity Services for One Tap/Button
   useEffect(() => {
     if (typeof google !== 'undefined' && google.accounts) {
       google.accounts.id.initialize({
-        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID, 
+        // IMPORTANT: Replace 'YOUR_GOOGLE_CLIENT_ID' with your actual Google Client ID from .env
+        // Example: client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID, // Ensure you have this in your .env file
         callback: handleGoogleOneTapCredentialResponse, // Callback for One Tap (if used)
       });
       // You can also render the button if you want the Google branded UI
@@ -43,12 +55,20 @@ export default function Register({ setIsLoggedIn, setGlobalMessage }) {
       const credential = GoogleAuthProvider.credential(response.credential);
       await signInWithPopup(auth, credential); // Use signInWithPopup with the credential
 
+      // Debugging: Log the value of setIsLoggedIn before calling it
+      console.log("Registration (One Tap): setIsLoggedIn before call:", setIsLoggedIn);
+      if (typeof setIsLoggedIn !== 'function') {
+        console.error("ERROR: setIsLoggedIn is not a function in One Tap handler.");
+        setMessage({ type: 'error', text: t('signUpError') || 'Authentication flow interrupted.' });
+        return;
+      }
+
       setIsLoggedIn(true);
       setGlobalMessage({ type: 'success', text: t('googleLoginSuccess') || 'Successfully logged in with Google!' });
       navigate('/');
     } catch (error: any) {
-      console.error("Firebase Google Sign-in error:", error);
-      setMessage({ type: 'error', text: t('signUpError') || 'Error during Google sign-in.' });
+      console.error("Firebase Google Sign-in error (One Tap):", error);
+      setMessage({ type: 'error', text: error.message || t('signUpError') || 'Error during Google sign-in.' });
     }
   };
 
@@ -62,6 +82,14 @@ export default function Register({ setIsLoggedIn, setGlobalMessage }) {
       // Example with Firebase Email/Password Auth (if enabled in Firebase console)
       // await signInWithEmailAndPassword(auth, email, password);
       console.log('Login with', email, password);
+
+      // Debugging: Log the value of setIsLoggedIn before calling it
+      console.log("Registration (Email/Pass): setIsLoggedIn before call:", setIsLoggedIn);
+      if (typeof setIsLoggedIn !== 'function') {
+        console.error("ERROR: setIsLoggedIn is not a function in Email/Pass handler.");
+        setMessage({ type: 'error', text: t('signUpError') || 'Login flow interrupted.' });
+        return;
+      }
 
       setIsLoggedIn(true);
       setGlobalMessage({ type: 'success', text: t('loginSuccess') || 'Login successful!' });
@@ -77,16 +105,21 @@ export default function Register({ setIsLoggedIn, setGlobalMessage }) {
     setMessage(null); // Clear previous messages
     try {
       const provider = new GoogleAuthProvider();
-      // You can choose signInWithPopup or signInWithRedirect
-      // signInWithPopup is generally better for web apps for a smoother UX
-      // signInWithRedirect is better for mobile apps or if popups are blocked
       await signInWithPopup(auth, provider);
+
+      // Debugging: Log the value of setIsLoggedIn before calling it
+      console.log("Registration (Google Button): setIsLoggedIn before call:", setIsLoggedIn);
+      if (typeof setIsLoggedIn !== 'function') {
+        console.error("ERROR: setIsLoggedIn is not a function in Google button handler.");
+        setMessage({ type: 'error', text: t('signUpError') || 'Authentication flow interrupted.' });
+        return;
+      }
 
       setIsLoggedIn(true);
       setGlobalMessage({ type: 'success', text: t('googleLoginSuccess') || 'Successfully logged in with Google!' });
       navigate('/');
     } catch (error: any) {
-      console.error("Firebase Google Sign-in error:", error);
+      console.error("Firebase Google Sign-in error (Button):", error);
       setMessage({ type: 'error', text: error.message || t('signUpError') || 'Error during Google sign-in.' });
     }
   };

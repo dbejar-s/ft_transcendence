@@ -11,6 +11,7 @@ import NotFound from './pages/NotFound';
 import SignUp from './pages/SignUp';
 import Header from './components/Header';
 import Footer from './components/Footer'
+import { useTranslation } from 'react-i18next'; // Import useTranslation for logout message
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -42,24 +43,30 @@ function MotionWrapper({ children }: { children: React.ReactNode }) {
 function AnimatedRoutes({
   isLoggedIn,
   setIsLoggedIn,
-  showLogoutMsg,
-  setShowLogoutMsg,
+  globalMessage, // Pass globalMessage down
+  setGlobalMessage, // Pass setGlobalMessage down
 }: {
   isLoggedIn: boolean;
   setIsLoggedIn: (value: boolean) => void;
-  showLogoutMsg: boolean;
-  setShowLogoutMsg: (value: boolean) => void;
+  globalMessage: { type: 'success' | 'error'; text: string } | null;
+  setGlobalMessage: (value: { type: 'success' | 'error'; text: string } | null) => void;
 }) {
   const location = useLocation();
+  const { t } = useTranslation();
+
+  // Debugging: Log the value of setIsLoggedIn received by AnimatedRoutes
+  console.log("AnimatedRoutes: setIsLoggedIn prop received:", setIsLoggedIn);
 
   const standardRoutes = [
-    { path: '/', element: <Home showLogoutMsg={showLogoutMsg} setShowLogoutMsg={setShowLogoutMsg} /> },
+    { path: '/', element: <Home globalMessage={globalMessage} setGlobalMessage={setGlobalMessage} /> },
     { path: '/tournament', element: <Tournament /> },
     { path: '/game', element: <Game /> },
     { path: '/score', element: <Score /> },
     { path: '/about', element: <About /> },
-    { path: '/register', element: <Register /> },
-    { path: '/signup', element: <SignUp /> },
+    // Pass setIsLoggedIn and setGlobalMessage to Register for authentication flow
+    { path: '/register', element: <Register setIsLoggedIn={setIsLoggedIn} setGlobalMessage={setGlobalMessage} /> },
+    // Pass setGlobalMessage to SignUp for message display
+    { path: '/signup', element: <SignUp setGlobalMessage={setGlobalMessage} /> },
   ];
 
   return (
@@ -74,7 +81,7 @@ function AnimatedRoutes({
                 <Header
                   isLoggedIn={isLoggedIn}
                   setIsLoggedIn={setIsLoggedIn}
-                  setShowLogoutMsg={setShowLogoutMsg}
+                  setGlobalMessage={setGlobalMessage} // Pass setGlobalMessage to Header for logout
                 />
                 <main className="flex-grow">{element}</main>
                 <Footer />
@@ -105,16 +112,19 @@ function AnimatedRoutes({
 
 
 export default function AppRouter() {
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
-  const [showLogoutMsg, setShowLogoutMsg] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // Default to false, as user needs to log in
+  const [globalMessage, setGlobalMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Debugging: Log the value of setIsLoggedIn from AppRouter's state
+  console.log("AppRouter: setIsLoggedIn function:", setIsLoggedIn);
 
   return (
     <BrowserRouter>
       <AnimatedRoutes
         isLoggedIn={isLoggedIn}
         setIsLoggedIn={setIsLoggedIn}
-        showLogoutMsg={showLogoutMsg}
-        setShowLogoutMsg={setShowLogoutMsg}
+        globalMessage={globalMessage}
+        setGlobalMessage={setGlobalMessage}
       />
     </BrowserRouter>
   );
