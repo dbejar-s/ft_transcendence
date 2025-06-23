@@ -1,26 +1,111 @@
 import { useTranslation } from 'react-i18next';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect } from 'firebase/auth'; // Import necessary Firebase Auth functions
 
-export default function Register() {
+// Declare google as a global object to avoid TypeScript errors
+declare const google: any;
+
+export default function Register({ setIsLoggedIn, setGlobalMessage }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    // TODO: Add connexion logic
-    console.log('Login with', email, password);
+  // Get the Firebase Auth instance
+  const auth = getAuth(); // Firebase app should be initialized in main.tsx
+
+  // useEffect hook to initialize Google Identity Services for One Tap/Button
+  useEffect(() => {
+    if (typeof google !== 'undefined' && google.accounts) {
+      google.accounts.id.initialize({
+        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID, 
+        callback: handleGoogleOneTapCredentialResponse, // Callback for One Tap (if used)
+      });
+      // You can also render the button if you want the Google branded UI
+      // google.accounts.id.renderButton(
+      //   document.getElementById("googleSignInDiv"),
+      //   { theme: "outline", size: "large" }
+      // );
+    }
+  }, []);
+
+  // Callback for Google One Tap or automated sign-in
+  const handleGoogleOneTapCredentialResponse = async (response: any) => {
+    // This part processes the ID token from Google Identity Services directly
+    // This is useful for silent or One Tap sign-in.
+    // For a manual button click, you'd use signInWithPopup or signInWithRedirect.
+    console.log("Encoded ID Token from One Tap/GSI: " + response.credential);
+
+    try {
+      // Sign in with Firebase using the Google ID token
+      const credential = GoogleAuthProvider.credential(response.credential);
+      await signInWithPopup(auth, credential); // Use signInWithPopup with the credential
+
+      setIsLoggedIn(true);
+      setGlobalMessage({ type: 'success', text: t('googleLoginSuccess') || 'Successfully logged in with Google!' });
+      navigate('/');
+    } catch (error: any) {
+      console.error("Firebase Google Sign-in error:", error);
+      setMessage({ type: 'error', text: t('signUpError') || 'Error during Google sign-in.' });
+    }
   };
 
-  const handleGoogleLogin = () => {
-    // TODO: Add Google Sign-in logic
-    console.log('Connexion via Google');
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMessage(null); // Clear previous messages
+
+    // TODO: Add connexion logic (e.g., API call to your backend for email/password login)
+    // For now, simulating a successful login
+    try {
+      // Example with Firebase Email/Password Auth (if enabled in Firebase console)
+      // await signInWithEmailAndPassword(auth, email, password);
+      console.log('Login with', email, password);
+
+      setIsLoggedIn(true);
+      setGlobalMessage({ type: 'success', text: t('loginSuccess') || 'Login successful!' });
+      navigate('/');
+    } catch (error: any) {
+      console.error("Email/Password login error:", error);
+      setMessage({ type: 'error', text: error.message || t('signUpError') || 'Login failed.' });
+    }
+  };
+
+  // Function to handle Google Sign-in initiated by button click
+  const handleGoogleLogin = async () => {
+    setMessage(null); // Clear previous messages
+    try {
+      const provider = new GoogleAuthProvider();
+      // You can choose signInWithPopup or signInWithRedirect
+      // signInWithPopup is generally better for web apps for a smoother UX
+      // signInWithRedirect is better for mobile apps or if popups are blocked
+      await signInWithPopup(auth, provider);
+
+      setIsLoggedIn(true);
+      setGlobalMessage({ type: 'success', text: t('googleLoginSuccess') || 'Successfully logged in with Google!' });
+      navigate('/');
+    } catch (error: any) {
+      console.error("Firebase Google Sign-in error:", error);
+      setMessage({ type: 'error', text: error.message || t('signUpError') || 'Error during Google sign-in.' });
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#44433e] text-[#FFFACD] p-6">
       <div className="bg-[#3b3a37] p-8 rounded-xl shadow-xl w-full max-w-md">
         <h2 className="text-3xl font-vt323 mb-6 text-center">{t('registerTitle') || 'Register / Login'}</h2>
+
+        {/* Message Display Area */}
+        {message && (
+          <div
+            className={`p-3 mb-4 rounded-lg text-center font-vt323 ${
+              message.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+            }`}
+          >
+            {message.text}
+          </div>
+        )}
 
         <form onSubmit={handleLogin} className="space-y-4">
           <input
