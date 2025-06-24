@@ -1,28 +1,31 @@
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import { useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import Home from './pages/Home';
-import Tournament from './pages/Tournament';
-import Game from './pages/Game';
-import Score from './pages/Score';
-import About from './pages/About';
-import Register from './pages/Registration';
-import NotFound from './pages/NotFound';
-import SignUp from './pages/SignUp';
-import Header from './components/Header';
-import Footer from './components/Footer'
+import type React from "react"
+
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom"
+import { useState } from "react"
+import { AnimatePresence, motion } from "framer-motion"
+import Home from "./pages/Home"
+import Tournament from "./pages/Tournament"
+import Game from "./pages/Game"
+import Profile from "./pages/profile/Profile"
+import CompleteProfile from "./pages/profile/CompleteProfile"
+import About from "./pages/About"
+import Register from "./pages/Registration"
+import NotFound from "./pages/NotFound"
+import SignUp from "./pages/SignUp"
+import Header from "./components/Header"
+import Footer from "./components/Footer"
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
   exit: { opacity: 0, y: -20 },
-};
+}
 
 const pageTransition = {
-  type: 'tween',
-  ease: 'anticipate',
-  duration: 0.005,
-};
+  type: "tween",
+  ease: "anticipate",
+  duration: 0.5, // Increased from 0.005 for better UX
+}
 
 function MotionWrapper({ children }: { children: React.ReactNode }) {
   return (
@@ -36,7 +39,7 @@ function MotionWrapper({ children }: { children: React.ReactNode }) {
     >
       {children}
     </motion.div>
-  );
+  )
 }
 
 function AnimatedRoutes({
@@ -45,22 +48,37 @@ function AnimatedRoutes({
   showLogoutMsg,
   setShowLogoutMsg,
 }: {
-  isLoggedIn: boolean;
-  setIsLoggedIn: (value: boolean) => void;
-  showLogoutMsg: boolean;
-  setShowLogoutMsg: (value: boolean) => void;
+  isLoggedIn: boolean
+  setIsLoggedIn: (value: boolean) => void
+  showLogoutMsg: boolean
+  setShowLogoutMsg: (value: boolean) => void
 }) {
-  const location = useLocation();
+  const location = useLocation()
+
+  const handleNavigate = (page: string) => {
+    // This would be implemented with proper navigation logic
+    window.location.href = `/${page === "home" ? "" : page}`
+  }
 
   const standardRoutes = [
-    { path: '/', element: <Home showLogoutMsg={showLogoutMsg} setShowLogoutMsg={setShowLogoutMsg} /> },
-    { path: '/tournament', element: <Tournament /> },
-    { path: '/game', element: <Game /> },
-    { path: '/score', element: <Score /> },
-    { path: '/about', element: <About /> },
-    { path: '/register', element: <Register /> },
-    { path: '/signup', element: <SignUp /> },
-  ];
+    {
+      path: "/",
+      element: (
+        <Home
+          showLogoutMsg={showLogoutMsg}
+          setShowLogoutMsg={setShowLogoutMsg}
+          onNavigateToGame={() => handleNavigate("game")}
+        />
+      ),
+    },
+    { path: "/tournament", element: <Tournament /> },
+    { path: "/game", element: <Game /> },
+    { path: "/profile", element: <Profile /> },
+    { path: "/about", element: <About /> },
+    { path: "/register", element: <Register /> },
+    { path: "/signup", element: <SignUp /> },
+    { path: "/completeprofile", element: <CompleteProfile /> },
+  ]
 
   return (
     <AnimatePresence mode="wait" initial={false}>
@@ -75,6 +93,7 @@ function AnimatedRoutes({
                   isLoggedIn={isLoggedIn}
                   setIsLoggedIn={setIsLoggedIn}
                   setShowLogoutMsg={setShowLogoutMsg}
+                  onNavigate={handleNavigate}
                 />
                 <main className="flex-grow">{element}</main>
                 <Footer />
@@ -82,7 +101,6 @@ function AnimatedRoutes({
             }
           />
         ))}
-        {/* NotFound route handled separately without Header/Footer */}
         <Route
           path="*"
           element={
@@ -100,13 +118,12 @@ function AnimatedRoutes({
         />
       </Routes>
     </AnimatePresence>
-  );
+  )
 }
 
-
 export default function AppRouter() {
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
-  const [showLogoutMsg, setShowLogoutMsg] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(true)
+  const [showLogoutMsg, setShowLogoutMsg] = useState(false)
 
   return (
     <BrowserRouter>
@@ -117,5 +134,5 @@ export default function AppRouter() {
         setShowLogoutMsg={setShowLogoutMsg}
       />
     </BrowserRouter>
-  );
+  )
 }

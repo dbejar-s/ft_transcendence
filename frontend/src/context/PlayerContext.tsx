@@ -1,29 +1,35 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, type ReactNode } from "react"
 
-// Define the shape of the player context
-interface PlayerContextType {
-  alias: string;
-  setAlias: (alias: string) => void;
+interface Player {
+  id: string
+  username: string
+  avatar: string
+  email: string
+  language: string
 }
 
-// Create the PlayerContext with default values
-const PlayerContext = createContext<PlayerContextType>({
-  alias: '',
-  setAlias: () => {},
-});
+interface PlayerContextType {
+  player: Player | null
+  setPlayer: (player: Player | null) => void
+  isLoggedIn: boolean
+  setIsLoggedIn: (value: boolean) => void
+}
 
-// Provider component that wraps the app and provides the player context
-export function PlayerProvider({ children }: { children: React.ReactNode }) {
-  const [alias, setAlias] = useState('');
+const PlayerContext = createContext<PlayerContextType | undefined>(undefined)
+
+export function PlayerProvider({ children }: { children: ReactNode }) {
+  const [player, setPlayer] = useState<Player | null>(null)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
 
   return (
-    <PlayerContext.Provider value={{ alias, setAlias }}>
-      {children}
-    </PlayerContext.Provider>
-  );
+    <PlayerContext.Provider value={{ player, setPlayer, isLoggedIn, setIsLoggedIn }}>{children}</PlayerContext.Provider>
+  )
 }
 
-// Custom hook to use the PlayerContext easily
 export function usePlayer() {
-  return useContext(PlayerContext);
+  const context = useContext(PlayerContext)
+  if (context === undefined) {
+    throw new Error("usePlayer must be used within a PlayerProvider")
+  }
+  return context
 }
