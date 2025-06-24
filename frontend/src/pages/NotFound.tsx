@@ -6,7 +6,7 @@ export default function NotFound() {
   const navigate = useNavigate();
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-[#44433e] text-white text-center p-8">
+    <div className="flex flex-col items-center justify-center h-screen bg-[#2a2a27] text-white text-center p-8">
       <h1 className="text-9xl font-bold mb-2">404</h1>
       <h2 className="text-3xl font-semibold mb-4">{t('notFound')}</h2>
       <p className="text-lg mb-8">{t('sorryNotFound')}</p>
@@ -15,7 +15,7 @@ export default function NotFound() {
         <button
           onClick={() => navigate('/')}
           aria-label={t('returnHomeAria')}
-          className="font-vt323 text-xl bg-[#FFFACD] text-[#3b3a37] px-6 py-3 rounded-lg border-2 border-transparent hover:border-[#FFFACD] hover:bg-[#3b3a37] hover:text-[#FFFACD] transition duration-200"
+          className="font-press text-base bg-white text-[#20201d] px-6 py-3 rounded-lg border-2 border-transparent hover:border-white hover:bg-[#20201d] hover:text-white transition duration-200"
         >
           {t('home')}
         </button>

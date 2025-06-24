@@ -41,9 +41,9 @@ export default function SignUp() {
 
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#44433e] text-[#FFFACD] p-6">
-      <div className="bg-[#3b3a37] p-8 rounded-xl shadow-xl w-full max-w-md">
-        <h2 className="text-3xl font-vt323 mb-6 text-center">{t('signUp')}</h2>
+    <div className="min-h-screen flex items-center justify-center bg-[#2a2a27] text-[#FFFACD] p-6">
+      <div className="bg-[#20201d] p-8 rounded-xl shadow-xl w-full max-w-md">
+        <h2 className="text-3xl font-press mb-6 text-center">{t('signUp')}</h2>
 
         <form onSubmit={handleSignUp} className="space-y-4">
           <input
@@ -51,7 +51,7 @@ export default function SignUp() {
             placeholder={t('email')}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full p-3 rounded-lg bg-[#FFFACD] text-[#3b3a37] placeholder-[#777] focus:outline-none"
+            className="w-full p-3 rounded-lg bg-[#FFFACD] text-[#20201d] placeholder-[#777] focus:outline-none"
             required
           />
 
@@ -60,7 +60,7 @@ export default function SignUp() {
             placeholder={t('password')}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-3 rounded-lg bg-[#FFFACD] text-[#3b3a37] placeholder-[#777] focus:outline-none"
+            className="w-full p-3 rounded-lg bg-[#FFFACD] text-[#20201d] placeholder-[#777] focus:outline-none"
             required
           />
 
@@ -69,7 +69,7 @@ export default function SignUp() {
             placeholder={t('confirmPassword')}
             value={passwordConfirm}
             onChange={(e) => setPasswordConfirm(e.target.value)}
-            className="w-full p-3 rounded-lg bg-[#FFFACD] text-[#3b3a37] placeholder-[#777] focus:outline-none"
+            className="w-full p-3 rounded-lg bg-[#FFFACD] text-[#20201d] placeholder-[#777] focus:outline-none"
             required
           />
 
@@ -80,7 +80,7 @@ export default function SignUp() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#FFFACD] text-[#3b3a37] font-vt323 text-xl py-3 rounded-lg hover:bg-[#e0e0a0] transition disabled:opacity-50"
+            className="w-full bg-[#FFFACD] text-[#20201d] font-press text-xl py-3 rounded-lg hover:bg-[#e0e0a0] transition disabled:opacity-50"
           >
             {loading ? t('loading') : t('signUp')}
           </button>
@@ -93,7 +93,7 @@ export default function SignUp() {
 
 		<button
 		onClick={handleGoogleLogin}
-		className="w-full bg-white text-[#3b3a37] py-3 rounded-lg font-semibold hover:bg-gray-100 transition"
+		className="w-full bg-white text-[#20201d] py-3 rounded-lg font-semibold hover:bg-gray-100 transition"
 		>
 		<img
 			src="https://developers.google.com/identity/images/g-logo.png"
