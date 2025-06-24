@@ -50,26 +50,26 @@ export default function Statistics() {
   ]
 
   // Recent player achievements with rarity classification
-  const recentAchievements = [
-    {
-      name: t("perfectGame") || "Perfect Game",
-      description: t("perfectGameDesc") || "Won without losing a single point",
-      date: `2 ${t("daysAgo") || "days ago"}`,
-      rarity: "rare",
-    },
-    {
-      name: t("speedDemon") || "Speed Demon",
-      description: t("speedDemonDesc") || "Won a match in under 5 minutes",
-      date: `1 ${t("weekAgo") || "week ago"}`,
-      rarity: "common",
-    },
-    {
-      name: t("comebackKing") || "Comeback King",
-      description: t("comebackKingDesc") || "Won after being 10 points behind",
-      date: `2 ${t("weeksAgo") || "weeks ago"}`,
-      rarity: "epic",
-    },
-  ]
+//   const recentAchievements = [
+//     {
+//       name: t("perfectGame") || "Perfect Game",
+//       description: t("perfectGameDesc") || "Won without losing a single point",
+//       date: `2 ${t("daysAgo") || "days ago"}`,
+//       rarity: "rare",
+//     },
+//     {
+//       name: t("speedDemon") || "Speed Demon",
+//       description: t("speedDemonDesc") || "Won a match in under 5 minutes",
+//       date: `1 ${t("weekAgo") || "week ago"}`,
+//       rarity: "common",
+//     },
+//     {
+//       name: t("comebackKing") || "Comeback King",
+//       description: t("comebackKingDesc") || "Won after being 10 points behind",
+//       date: `2 ${t("weeksAgo") || "weeks ago"}`,
+//       rarity: "epic",
+//     },
+//   ]
 
   // Statistics per game mode
   const gameModesStats = [
@@ -92,18 +92,18 @@ export default function Statistics() {
   }
 
   // Utility to style achievements based on rarity
-  const getRarityColor = (rarity: string) => {
-    switch (rarity) {
-      case "common":
-        return "border-gray-500 bg-gray-500 bg-opacity-20"
-      case "rare":
-        return "border-blue-500 bg-blue-500 bg-opacity-20"
-      case "epic":
-        return "border-purple-500 bg-purple-500 bg-opacity-20"
-      default:
-        return "border-[#FFFACD] bg-[#FFFACD] bg-opacity-20"
-    }
-  }
+//   const getRarityColor = (rarity: string) => {
+//     switch (rarity) {
+//       case "common":
+//         return "border-gray-500 bg-gray-500 bg-opacity-20"
+//       case "rare":
+//         return "border-blue-500 bg-blue-500 bg-opacity-20"
+//       case "epic":
+//         return "border-purple-500 bg-purple-500 bg-opacity-20"
+//       default:
+//         return "border-[#FFFACD] bg-[#FFFACD] bg-opacity-20"
+//     }
+//   }
 
   // Prepare pie chart data for each game mode
   const pieDataForMode = (mode: typeof gameModesStats[0]) => [
@@ -189,7 +189,7 @@ export default function Statistics() {
       </div>
 
       {/* Recent Achievements */}
-      <div className="bg-[#2a2a27] rounded-lg p-6">
+      {/* <div className="bg-[#2a2a27] rounded-lg p-6">
         <h3 className="text-sm font-press font-bold text-[#FFFACD] mb-4 flex items-center gap-2">
           <Trophy size={20} />
           {t("recentAchievements") || "Recent Achievements"}
@@ -207,7 +207,7 @@ export default function Statistics() {
             </div>
           ))}
         </div>
-      </div>
+      </div> */}
     </div>
   )
 }
