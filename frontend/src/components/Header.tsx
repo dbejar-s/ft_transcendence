@@ -1,7 +1,8 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import React from 'react'; // Import React for React.MouseEvent
 
-export default function Header({ isLoggedIn, setIsLoggedIn, setShowLogoutMsg }) {
+export default function Header({ isLoggedIn, setIsLoggedIn, setGlobalMessage }) {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
 
@@ -10,19 +11,20 @@ export default function Header({ isLoggedIn, setIsLoggedIn, setShowLogoutMsg }) 
     { path: '/about', label: t('about') },
   ];
 
+  // Add the profile link to userLinks
   const userLinks = [
     { path: '/game', label: t('game') },
     { path: '/score', label: t('score') },
     { path: '/tournament', label: t('tournaments') },
+    { path: '/profile', label: t('profile') }, // New: Profile link
   ];
 
-  const handleLogout = () => {
-    const confirmed = window.confirm(t('logoutConfirm'));
-    if (confirmed) {
-      setIsLoggedIn(false);
-      setShowLogoutMsg(true);
-      navigate('/');
-    }
+  const handleLogout = (e: React.MouseEvent) => {
+    e.preventDefault();
+
+    setGlobalMessage({ type: 'success', text: t('logoutMessage') });
+    setIsLoggedIn(false);
+    navigate('/');
   };
 
   const changeLanguage = (lng: string) => i18n.changeLanguage(lng);
@@ -69,18 +71,7 @@ export default function Header({ isLoggedIn, setIsLoggedIn, setShowLogoutMsg }) 
           <button onClick={() => changeLanguage('fr')} aria-label="Français">🇫🇷</button>
           <button onClick={() => changeLanguage('es')} aria-label="Español">🇪🇸</button>
         </div>
-        {/* <div className="flex items-center gap-2 ml-4 text-xl text-[#FFFACD]">
-          <select
-            onChange={(e) => changeLanguage(e.target.value)}
-            className="bg-[#44433e] text-[#FFFACD] border border-[#FFFACD] rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#FFFACD] cursor-pointer"
-          >
-            <option value="en">🇬🇧</option>
-            <option value="fr">🇫🇷</option>
-            <option value="es">🇪🇸</option>
-          </select>
-        </div> */}
       </nav>
     </header>
   );
 }
-

@@ -11,7 +11,7 @@ import NotFound from './pages/NotFound';
 import SignUp from './pages/SignUp';
 import Header from './components/Header';
 import Footer from './components/Footer'
-import { useTranslation } from 'react-i18next'; // Import useTranslation for logout message
+import Profile from './pages/Profile'; // Import the new Profile page
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -52,10 +52,6 @@ function AnimatedRoutes({
   setGlobalMessage: (value: { type: 'success' | 'error'; text: string } | null) => void;
 }) {
   const location = useLocation();
-  const { t } = useTranslation();
-
-  // Debugging: Log the value of setIsLoggedIn received by AnimatedRoutes
-  console.log("AnimatedRoutes: setIsLoggedIn prop received:", setIsLoggedIn);
 
   const standardRoutes = [
     { path: '/', element: <Home globalMessage={globalMessage} setGlobalMessage={setGlobalMessage} /> },
@@ -63,10 +59,9 @@ function AnimatedRoutes({
     { path: '/game', element: <Game /> },
     { path: '/score', element: <Score /> },
     { path: '/about', element: <About /> },
-    // Pass setIsLoggedIn and setGlobalMessage to Register for authentication flow
     { path: '/register', element: <Register setIsLoggedIn={setIsLoggedIn} setGlobalMessage={setGlobalMessage} /> },
-    // Pass setGlobalMessage to SignUp for message display
     { path: '/signup', element: <SignUp setGlobalMessage={setGlobalMessage} /> },
+    { path: '/profile', element: <Profile /> }, // Add the new profile route
   ];
 
   return (
@@ -114,9 +109,6 @@ function AnimatedRoutes({
 export default function AppRouter() {
   const [isLoggedIn, setIsLoggedIn] = useState(false); // Default to false, as user needs to log in
   const [globalMessage, setGlobalMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  // Debugging: Log the value of setIsLoggedIn from AppRouter's state
-  console.log("AppRouter: setIsLoggedIn function:", setIsLoggedIn);
 
   return (
     <BrowserRouter>
