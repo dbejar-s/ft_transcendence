@@ -1,20 +1,19 @@
-import { useState } from "react"
-import { useTranslation } from "react-i18next"
-import UserInfo from "../../components/profile/UserInfo"
-import Friends from "../../components/profile/Friends"
-import MatchHistory from "../../components/profile/MatchHistory"
-import Statistics from "../../components/profile/Statistics"
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import UserInfo from "../../components/profile/UserInfo";
+import Friends from "../../components/profile/Friends";
+import MatchHistory from "../../components/profile/MatchHistory";
+import Statistics from "../../components/profile/Statistics";
+import { usePlayer } from "../../context/PlayerContext"; // Import the usePlayer hook
 
 export default function Profile() {
-  const { t } = useTranslation()
-  const [activeTab, setActiveTab] = useState<"user" | "friends" | "matches" | "stats">("user")
+  const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState<"user" | "friends" | "matches" | "stats">("user");
+  const { player } = usePlayer(); // Get player data from context
 
-  // TODO: Replace with actual user data from context/API
-  const user = {
-    avatar: "/src/assets/Profile/men1.png",
-    username: "JohnDoe",
-    email: "john@example.com",
-    language: "en",
+  // If the player data is not yet loaded, show a loading message or return null
+  if (!player) {
+    return <div>{t("loading") || "Loading..."}</div>;
   }
 
   return (
@@ -27,7 +26,7 @@ export default function Profile() {
           }`}
           onClick={() => setActiveTab("user")}
         >
-          {user.username}
+          {player.username}
         </button>
         <button
           className={`py-2 px-4 font-press text-sm transition-all duration-200 ${
@@ -57,11 +56,11 @@ export default function Profile() {
 
       {/* Content */}
       <div className="bg-[#20201d] rounded-xl p-6 shadow-lg border border-[#FFFACD] border-opacity-20">
-        {activeTab === "user" && <UserInfo {...user} />}
+        {activeTab === "user" && <UserInfo {...player} />}
         {activeTab === "friends" && <Friends />}
         {activeTab === "matches" && <MatchHistory />}
         {activeTab === "stats" && <Statistics />}
       </div>
     </div>
-  )
+  );
 }

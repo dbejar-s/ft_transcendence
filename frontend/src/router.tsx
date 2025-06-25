@@ -1,7 +1,6 @@
 import type React from "react"
-
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom"
-import { useState } from "react"
+import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom"
+import { useState, useEffect } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import Home from "./pages/Home"
 import Tournament from "./pages/Tournament"
@@ -14,6 +13,8 @@ import NotFound from "./pages/NotFound"
 import SignUp from "./pages/SignUp"
 import Header from "./components/Header"
 import Footer from "./components/Footer"
+import { usePlayer } from "./context/PlayerContext"
+import { auth } from "./firebase"
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -24,7 +25,7 @@ const pageVariants = {
 const pageTransition = {
   type: "tween",
   ease: "anticipate",
-  duration: 0.5, // Increased from 0.005 for better UX
+  duration: 0.5,
 }
 
 function MotionWrapper({ children }: { children: React.ReactNode }) {
@@ -42,42 +43,56 @@ function MotionWrapper({ children }: { children: React.ReactNode }) {
   )
 }
 
-function AnimatedRoutes({
-  isLoggedIn,
-  setIsLoggedIn,
-  showLogoutMsg,
-  setShowLogoutMsg,
-}: {
-  isLoggedIn: boolean
-  setIsLoggedIn: (value: boolean) => void
-  showLogoutMsg: boolean
-  setShowLogoutMsg: (value: boolean) => void
-}) {
-  const location = useLocation()
+function AnimatedRoutes() {
+  const { isLoggedIn, setIsLoggedIn, setPlayer } = usePlayer();
+  const [showLogoutMsg, setShowLogoutMsg] = useState(false)
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        setIsLoggedIn(true);
+        const playerData = {
+          id: user.uid,
+          username: user.displayName || "Anonymous",
+          avatar: user.photoURL || "/src/assets/Profile/men1.png",
+          email: user.email || "",
+          language: "en",
+        };
+        setPlayer(playerData);
+        // Redirect to home if user is on a guest page
+        if (['/register', '/signup'].includes(location.pathname)) {
+          navigate('/');
+        }
+      } else {
+        setIsLoggedIn(false);
+        setPlayer(null);
+      }
+    });
+    return () => unsubscribe();
+  }, [setIsLoggedIn, setPlayer, navigate, location.pathname]);
+
 
   const handleNavigate = (page: string) => {
-    // This would be implemented with proper navigation logic
-    window.location.href = `/${page === "home" ? "" : page}`
+    navigate(`/${page === "home" ? "" : page}`);
   }
 
   const standardRoutes = [
-    {
-      path: "/",
-      element: (
-        <Home
-          showLogoutMsg={showLogoutMsg}
-          setShowLogoutMsg={setShowLogoutMsg}
-          onNavigateToGame={() => handleNavigate("game")}
-        />
-      ),
-    },
-    { path: "/tournament", element: <Tournament /> },
-    { path: "/game", element: <Game /> },
-    { path: "/profile", element: <Profile /> },
+    { path: "/", element: <Home showLogoutMsg={showLogoutMsg} setShowLogoutMsg={setShowLogoutMsg} onNavigateToGame={() => handleNavigate("game")} /> },
     { path: "/about", element: <About /> },
-    { path: "/register", element: <Register /> },
-    { path: "/signup", element: <SignUp /> },
-    { path: "/completeprofile", element: <CompleteProfile /> },
+    // Guest only routes
+    ...(!isLoggedIn ? [
+      { path: "/register", element: <Register /> },
+      { path: "/signup", element: <SignUp /> },
+    ] : []),
+    // Authenticated only routes
+    ...(isLoggedIn ? [
+      { path: "/tournament", element: <Tournament /> },
+      { path: "/game", element: <Game /> },
+      { path: "/profile", element: <Profile /> },
+      { path: "/completeprofile", element: <CompleteProfile /> },
+    ] : [])
   ]
 
   return (
@@ -122,17 +137,9 @@ function AnimatedRoutes({
 }
 
 export default function AppRouter() {
-  const [isLoggedIn, setIsLoggedIn] = useState(true)
-  const [showLogoutMsg, setShowLogoutMsg] = useState(false)
-
   return (
     <BrowserRouter>
-      <AnimatedRoutes
-        isLoggedIn={isLoggedIn}
-        setIsLoggedIn={setIsLoggedIn}
-        showLogoutMsg={showLogoutMsg}
-        setShowLogoutMsg={setShowLogoutMsg}
-      />
+      <AnimatedRoutes />
     </BrowserRouter>
   )
 }

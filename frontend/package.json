@@ -10,9 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@fontsource/press": "^5.2.5",
     "@fontsource/press-start-2p": "^5.2.6",
     "express": "^5.1.0",
+    "firebase": "^11.9.1",
     "framer-motion": "^12.15.0",
     "i18next": "^25.2.1",
     "i18next-browser-languagedetector": "^8.1.0",
