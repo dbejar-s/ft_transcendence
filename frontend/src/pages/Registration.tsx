@@ -1,8 +1,8 @@
 import type React from "react"
-
 import { useTranslation } from "react-i18next"
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { signInWithGoogle } from "../firebase";
 
 export default function Register() {
   const { t } = useTranslation()
@@ -27,10 +27,18 @@ export default function Register() {
     }
   }
 
-  const handleGoogleLogin = () => {
-    // TODO: Add Google Sign-in logic
-    console.log("Google Sign-in")
-  }
+  const handleGoogleLogin = async () => {
+    try {
+      const result = await signInWithGoogle();
+      const user = result.user;
+      console.log("Google Sign-in successful:", user);
+      // After successful sign-in, Firebase's onAuthStateChanged will handle the redirect.
+      // You can also manually navigate if needed, for example, to a profile completion page.
+      // navigate('/completeprofile');
+    } catch (error) {
+      console.error("Google Sign-in failed:", error);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#2a2a27] text-[#FFFACD] p-6">

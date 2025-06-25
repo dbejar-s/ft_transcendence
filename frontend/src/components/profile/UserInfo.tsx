@@ -1,134 +1,145 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
 import { Pencil, Upload, Eye, EyeOff } from "lucide-react"
 import { predefinedAvatars } from "./ProfileUtils"
 
 interface UserInfoProps {
-  avatar: string
-  username: string
-  email: string
-  language: string
+  avatar: string;
+  username: string;
+  email: string;
+  language: string;
 }
 
 export default function UserInfo({ avatar, username, email, language }: UserInfoProps) {
   const { t } = useTranslation()
 
-  const [avatarFile, setAvatarFile] = useState<string | File>(avatar)
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
-  const [usernameValue, setUsernameValue] = useState(username)
-  const [isEditingUsername, setIsEditingUsername] = useState(false)
-  const [usernameError, setUsernameError] = useState("")
+  // States for editable fields
+  const [avatarFile, setAvatarFile] = useState<string | File>(avatar);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [usernameValue, setUsernameValue] = useState(username);
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [usernameError, setUsernameError] = useState("");
 
-  const [emailValue, setEmailValue] = useState(email)
-  const [isEditingEmail, setIsEditingEmail] = useState(false)
-  const [emailError, setEmailError] = useState("")
+  const [emailValue, setEmailValue] = useState(email);
+  const [isEditingEmail, setIsEditingEmail] = useState(false);
+  const [emailError, setEmailError] = useState("");
 
-  const [passwordValue, setPasswordValue] = useState("")
-  const [isEditingPassword, setIsEditingPassword] = useState(false)
-  const [passwordError, setPasswordError] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
+  const [passwordValue, setPasswordValue] = useState("");
+  const [isEditingPassword, setIsEditingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
-  const [languageValue, setLanguageValue] = useState(language)
-  const [isEditingLanguage, setIsEditingLanguage] = useState(false)
+  const [languageValue, setLanguageValue] = useState(language);
+  const [isEditingLanguage, setIsEditingLanguage] = useState(false);
+
+  // Effect to update state when props change (e.g., user logs out and another logs in)
+  useEffect(() => {
+    setUsernameValue(username);
+    setEmailValue(email);
+    setLanguageValue(language);
+    setAvatarFile(avatar);
+    setAvatarPreview(null);
+  }, [username, email, language, avatar]);
 
   const validateField = (field: string, value: string) => {
     if (field === "username") {
-      if (value.length < 3) return t("usernameMinLength")
-      if (value.length > 20) return t("usernameMaxLength")
+      if (value.length < 3) return t("usernameMinLength");
+      if (value.length > 20) return t("usernameMaxLength");
     }
     if (field === "email") {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!emailRegex.test(value)) return t("invalidEmail")
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(value)) return t("invalidEmail");
     }
     if (field === "password") {
-      if (value.length < 6) return t("passwordMinLength")
+      if (value.length < 6) return t("passwordMinLength");
     }
-    return ""
-  }
+    return "";
+  };
 
   const saveField = async (field: "username" | "email" | "language" | "password") => {
-    let value = ""
-    if (field === "username") value = usernameValue
-    else if (field === "email") value = emailValue
-    else if (field === "language") value = languageValue
-    else if (field === "password") value = passwordValue
+    let value = "";
+    if (field === "username") value = usernameValue;
+    else if (field === "email") value = emailValue;
+    else if (field === "language") value = languageValue;
+    else if (field === "password") value = passwordValue;
 
-    const error = validateField(field, value)
+    const error = validateField(field, value);
     if (error) {
-      if (field === "username") setUsernameError(error)
-      else if (field === "email") setEmailError(error)
-      else if (field === "password") setPasswordError(error)
-      return
+      if (field === "username") setUsernameError(error);
+      else if (field === "email") setEmailError(error);
+      else if (field === "password") setPasswordError(error);
+      return;
     }
 
     // Simulate API call
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      // TODO: Here you would make an API call to your backend to save the data
+      console.log(`Saving ${field}:`, value);
 
       if (field === "username") {
-        setIsEditingUsername(false)
-        setUsernameError("")
+        setIsEditingUsername(false);
+        setUsernameError("");
       } else if (field === "email") {
-        setIsEditingEmail(false)
-        setEmailError("")
+        setIsEditingEmail(false);
+        setEmailError("");
       } else if (field === "language") {
-        setIsEditingLanguage(false)
+        setIsEditingLanguage(false);
       } else if (field === "password") {
-        setIsEditingPassword(false)
-        setPasswordValue("")
-        setShowPassword(false)
-        setPasswordError("")
+        setIsEditingPassword(false);
+        setPasswordValue("");
+        setShowPassword(false);
+        setPasswordError("");
       }
     } catch (error) {
-      console.error("Save failed:", error)
+      console.error("Save failed:", error);
     }
-  }
+  };
 
   const cancelEdit = (field: "username" | "email" | "language" | "password") => {
     if (field === "username") {
-      setIsEditingUsername(false)
-      setUsernameError("")
-      setUsernameValue(username)
-      setAvatarFile(avatar)
-      setAvatarPreview(null)
+      setIsEditingUsername(false);
+      setUsernameError("");
+      setUsernameValue(username);
+      setAvatarFile(avatar);
+      setAvatarPreview(null);
     }
     if (field === "email") {
-      setIsEditingEmail(false)
-      setEmailError("")
-      setEmailValue(email)
+      setIsEditingEmail(false);
+      setEmailError("");
+      setEmailValue(email);
     }
     if (field === "language") {
-      setIsEditingLanguage(false)
-      setLanguageValue(language)
+      setIsEditingLanguage(false);
+      setLanguageValue(language);
     }
     if (field === "password") {
-      setIsEditingPassword(false)
-      setPasswordError("")
-      setPasswordValue("")
-      setShowPassword(false)
+      setIsEditingPassword(false);
+      setPasswordError("");
+      setPasswordValue("");
+      setShowPassword(false);
     }
-  }
+  };
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file) {
-      setAvatarFile(file)
-      const reader = new FileReader()
+      setAvatarFile(file);
+      const reader = new FileReader();
       reader.onloadend = () => {
-        setAvatarPreview(reader.result as string)
-      }
-      reader.readAsDataURL(file)
+        setAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
-  }
+  };
 
   const handlePredefinedAvatarClick = (avatarPath: string) => {
-    setAvatarFile(avatarPath)
-    setAvatarPreview(avatarPath)
-  }
+    setAvatarFile(avatarPath);
+    setAvatarPreview(avatarPath);
+  };
 
   return (
     <div className="bg-[#20201d] text-[#FFFACD] rounded-xl p-6 space-y-6 max-w-md mx-auto text-center relative">
@@ -137,7 +148,7 @@ export default function UserInfo({ avatar, username, email, language }: UserInfo
         <img
           src={
             avatarPreview ||
-            (typeof avatarFile === "string" ? avatarFile : avatarFile ? URL.createObjectURL(avatarFile) : avatar)
+            (typeof avatarFile === "string" ? avatarFile : avatarFile instanceof File ? URL.createObjectURL(avatarFile) : avatar)
           }
           alt="Avatar"
           className="w-20 h-20 rounded-full border-2 border-[#FFFACD] object-cover"

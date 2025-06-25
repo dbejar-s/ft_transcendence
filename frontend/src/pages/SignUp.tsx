@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { signInWithGoogle } from "../firebase";
 
 export default function SignUp() {
   const { t } = useTranslation();
@@ -12,7 +13,6 @@ export default function SignUp() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Simple password confirmation check
     if (password !== passwordConfirm) {
       setError(t('passwordMismatch'));
       return;
@@ -23,8 +23,6 @@ export default function SignUp() {
 
     try {
       // TODO: Add backend API call here to register the user
-
-      // TODO: Handle success response (e.g., redirect to login or home page)
       console.log('User registered:', email);
       alert(t('signUpSuccess'));
       // TODO: Redirection
@@ -34,9 +32,16 @@ export default function SignUp() {
       setLoading(false);
     }
   };
-  const handleGoogleLogin = () => {
-    // TODO: Add Google Sign-up logic
-    console.log('Sign up via Google');
+
+  const handleGoogleLogin = async () => {
+    try {
+      const result = await signInWithGoogle();
+      const user = result.user;
+      console.log("Google Sign-up successful:", user);
+      // After successful sign-in, Firebase's onAuthStateChanged will handle the redirect.
+    } catch (error) {
+      console.error("Google Sign-up failed:", error);
+    }
   };
 
 

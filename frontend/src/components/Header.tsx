@@ -1,37 +1,47 @@
-import { useTranslation } from "react-i18next"
-import { LogOut } from "lucide-react"
+import { useTranslation } from "react-i18next";
+import { LogOut } from "lucide-react";
+import { logout } from "../firebase"; // Import the logout function
 
 interface HeaderProps {
-  isLoggedIn: boolean
-  setIsLoggedIn: (value: boolean) => void
-  setShowLogoutMsg: (value: boolean) => void
-  onNavigate: (page: string) => void
+  isLoggedIn: boolean;
+  setIsLoggedIn: (value: boolean) => void;
+  setShowLogoutMsg: (value: boolean) => void;
+  onNavigate: (page: string) => void;
 }
 
-export default function Header({ isLoggedIn, setIsLoggedIn, setShowLogoutMsg, onNavigate }: HeaderProps) {
-  const { t, i18n } = useTranslation()
+export default function Header({
+  isLoggedIn,
+  setIsLoggedIn,
+  setShowLogoutMsg,
+  onNavigate,
+}: HeaderProps) {
+  const { t, i18n } = useTranslation();
 
   const guestLinks = [
     { path: "register", label: t("register") },
     { path: "about", label: t("about") },
-  ]
+  ];
 
   const userLinks = [
     { path: "game", label: t("game") },
     { path: "tournament", label: t("tournaments") },
     { path: "profile", label: t("profile") },
-  ]
+  ];
 
-  const handleLogout = () => {
-    const confirmed = window.confirm(t("logoutConfirm"))
+  const handleLogout = async () => {
+    const confirmed = window.confirm(t("logoutConfirm"));
     if (confirmed) {
-      setIsLoggedIn(false)
-      setShowLogoutMsg(true)
-      onNavigate("home")
+      try {
+        await logout();
+        setShowLogoutMsg(true);
+        onNavigate("home");
+      } catch (error) {
+        console.error("Logout failed:", error);
+      }
     }
-  }
+  };
 
-  const changeLanguage = (lng: string) => i18n.changeLanguage(lng)
+  const changeLanguage = (lng: string) => i18n.changeLanguage(lng);
 
   return (
     <header className="flex justify-between items-center py-4 px-6 bg-[#2a2a27] border-b-2 border-[#FFFACD] border-opacity-20">
@@ -88,5 +98,5 @@ export default function Header({ isLoggedIn, setIsLoggedIn, setShowLogoutMsg, on
         </div>
       </nav>
     </header>
-  )
+  );
 }
