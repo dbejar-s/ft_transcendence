@@ -57,6 +57,8 @@
     "editEmail": "Editar Correo Electrónico",
     "changePassword": "Cambiar Contraseña",
     "editLanguage": "Editar Idioma",
+    "editProfile": "Editar perfil",
+    "edit": "Editar",
     "save": "Guardar",
     "cancel": "Cancelar",
     "showPassword": "Mostrar Contraseña",
@@ -113,5 +115,9 @@
     "usernameMinLength": "El nombre de usuario debe tener al menos 3 caracteres",
     "usernameMaxLength": "El nombre de usuario debe tener menos de 20 caracteres",
     "invalidEmail": "Por favor ingresa un correo electrónico válido",
-    "passwordMinLength": "La contraseña debe tener al menos 6 caracteres"
+    "passwordMinLength": "La contraseña debe tener al menos 6 caracteres",
+    "username": "Nombre de usuario",
+    "language": "Idioma",
+    "usernameInUseError": "Este nombre de usuario ya está en uso. Por favor, elige otro",
+    "profileSaveError": "Error al guardar el perfil."
 }

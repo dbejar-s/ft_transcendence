@@ -49,28 +49,6 @@ export default function Statistics() {
     },
   ]
 
-  // Recent player achievements with rarity classification
-//   const recentAchievements = [
-//     {
-//       name: t("perfectGame") || "Perfect Game",
-//       description: t("perfectGameDesc") || "Won without losing a single point",
-//       date: `2 ${t("daysAgo") || "days ago"}`,
-//       rarity: "rare",
-//     },
-//     {
-//       name: t("speedDemon") || "Speed Demon",
-//       description: t("speedDemonDesc") || "Won a match in under 5 minutes",
-//       date: `1 ${t("weekAgo") || "week ago"}`,
-//       rarity: "common",
-//     },
-//     {
-//       name: t("comebackKing") || "Comeback King",
-//       description: t("comebackKingDesc") || "Won after being 10 points behind",
-//       date: `2 ${t("weeksAgo") || "weeks ago"}`,
-//       rarity: "epic",
-//     },
-//   ]
-
   // Statistics per game mode
   const gameModesStats = [
     { mode: "Casual", games: 156, winRate: 71.2 },
@@ -90,20 +68,6 @@ export default function Statistics() {
         return "text-[#FFFACD] opacity-70"
     }
   }
-
-  // Utility to style achievements based on rarity
-//   const getRarityColor = (rarity: string) => {
-//     switch (rarity) {
-//       case "common":
-//         return "border-gray-500 bg-gray-500 bg-opacity-20"
-//       case "rare":
-//         return "border-blue-500 bg-blue-500 bg-opacity-20"
-//       case "epic":
-//         return "border-purple-500 bg-purple-500 bg-opacity-20"
-//       default:
-//         return "border-[#FFFACD] bg-[#FFFACD] bg-opacity-20"
-//     }
-//   }
 
   // Prepare pie chart data for each game mode
   const pieDataForMode = (mode: typeof gameModesStats[0]) => [
@@ -167,7 +131,7 @@ export default function Statistics() {
                     }
                     labelLine={false}
                   >
-                    {pieDataForMode(mode).map((entry, i) => (
+                    {pieDataForMode(mode).map((_, i) => ( // FIXED: changed 'entry' to '_'
                       <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
@@ -187,27 +151,6 @@ export default function Statistics() {
           ))}
         </div>
       </div>
-
-      {/* Recent Achievements */}
-      {/* <div className="bg-[#2a2a27] rounded-lg p-6">
-        <h3 className="text-sm font-press font-bold text-[#FFFACD] mb-4 flex items-center gap-2">
-          <Trophy size={20} />
-          {t("recentAchievements") || "Recent Achievements"}
-        </h3>
-        <div className="space-y-3">
-          {recentAchievements.map((achievement, index) => (
-            <div key={index} className={`p-4 rounded-lg border-l-4 ${getRarityColor(achievement.rarity)}`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-press font-bold text-[#FFFACD] text-sm">{achievement.name}</div>
-                  <div className="text-xs text-[#FFFACD] opacity-70 font-press">{achievement.description}</div>
-                </div>
-                <div className="text-xs text-[#FFFACD] opacity-60 font-press">{achievement.date}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div> */}
     </div>
   )
 }

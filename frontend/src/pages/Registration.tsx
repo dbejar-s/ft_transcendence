@@ -3,40 +3,58 @@ import { useTranslation } from "react-i18next"
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { signInWithGoogle } from "../firebase";
+// ADDED: Import our new services
+import { authService } from "../services/api";
+import { usePlayer } from "../context/PlayerContext";
 
 export default function Register() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { login } = usePlayer(); // ADDED: Get the login function from context
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null); // ADDED: Error state
 
+  // CHANGED: This function now calls our backend API
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setError(null);
 
     try {
-      // TODO: Add actual authentication logic
-      console.log("Login with", email, password)
-      // On success, navigate to home or profile
-      // navigate('/')
-    } catch (error) {
+      const { user } = await authService.login(email, password);
+      login(user); // Use the context login function
+      navigate('/'); // Navigate to home on success
+    } catch (error: any) {
       console.error("Login failed:", error)
+      setError(error.message || t('loginError'));
     } finally {
       setLoading(false)
     }
   }
 
+  // CHANGED: This function now calls our backend API after getting Google info
   const handleGoogleLogin = async () => {
     try {
       const result = await signInWithGoogle();
-      const user = result.user;
-      console.log("Google Sign-in successful:", user);
-      // After successful sign-in, Firebase's onAuthStateChanged will handle the redirect.
-      // You can also manually navigate if needed, for example, to a profile completion page.
-      // navigate('/completeprofile');
-    } catch (error) {
+      const googleUser = result.user;
+      
+      // Prepare user data to send to our backend
+      const googleUserData = {
+          token: await googleUser.getIdToken(), // Good practice to send the token for verification
+          email: googleUser.email,
+          name: googleUser.displayName,
+          sub: googleUser.uid,
+          picture: googleUser.photoURL,
+      };
+
+      const { user } = await authService.handleGoogleLogin(googleUserData);
+      login(user);
+      navigate('/');
+    } catch (error: any) {
       console.error("Google Sign-in failed:", error);
+      setError(error.message || 'Google login failed');
     }
   };
 
@@ -62,6 +80,9 @@ export default function Register() {
             className="w-full p-3 rounded-lg bg-[#FFFACD] text-[#20201d] placeholder-[#777] focus:outline-none focus:ring-2 focus:ring-[#FFFACD]"
             required
           />
+          
+          {/* ADDED: Display login errors */}
+          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
 
           <button
             type="submit"

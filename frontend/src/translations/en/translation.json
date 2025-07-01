@@ -57,6 +57,8 @@
     "editEmail": "Edit Email",
     "changePassword": "Change Password",
     "editLanguage": "Edit Language",
+    "editProfile": "Edit Profile",
+    "edit": "Edit",
     "save": "Save",
     "cancel": "Cancel",
     "showPassword": "Show Password",
@@ -113,5 +115,9 @@
     "usernameMinLength": "Username must be at least 3 characters",
     "usernameMaxLength": "Username must be less than 20 characters",
     "invalidEmail": "Please enter a valid email",
-    "passwordMinLength": "Password must be at least 6 characters"
+    "passwordMinLength": "Password must be at least 6 characters",
+    "username": "Username",
+    "language": "Language",
+    "usernameInUseError": "This username is already in use. Please, pick another one",
+    "profileSaveError": "Failed to save profile."
 }

@@ -57,6 +57,8 @@
     "editEmail": "Modifier l'E-mail",
     "changePassword": "Changer le Mot de Passe",
     "editLanguage": "Modifier la Langue",
+    "editProfile": "Modifier le profil",
+    "edit": "Modifier",
     "save": "Sauvegarder",
     "cancel": "Annuler",
     "showPassword": "Afficher le Mot de Passe",
@@ -109,9 +111,13 @@
     "weeksAgo": "semaines",
     "english": "Anglais",
     "french": "Français",
-    "spanish": "Español",
+    "spanish": "Espagnol",
     "usernameMinLength": "Le nom d'utilisateur doit contenir au moins 3 caractères",
     "usernameMaxLength": "Le nom d'utilisateur doit contenir moins de 20 caractères",
     "invalidEmail": "Veuillez entrer un e-mail valide",
-    "passwordMinLength": "Le mot de passe doit contenir au moins 6 caractères"
+    "passwordMinLength": "Le mot de passe doit contenir au moins 6 caractères",
+    "username": "Nom d'utilisateur",
+    "language": "Langue",
+    "usernameInUseError": "Ce nom d'utilisateur est déjà pris. Veuillez en choisir un autre",
+    "profileSaveError": "Échec de la sauvegarde du profil."
 }

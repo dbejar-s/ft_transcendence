@@ -1,7 +1,8 @@
 import type React from "react"
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom"
 import { useState, useEffect } from "react"
-import { AnimatePresence, motion } from "framer-motion"
+// FIXED: Changed 'Transition' to a type-only import
+import { AnimatePresence, motion, type Transition } from "framer-motion"
 import Home from "./pages/Home"
 import Tournament from "./pages/Tournament"
 import Game from "./pages/Game"
@@ -16,17 +17,18 @@ import Footer from "./components/Footer"
 import { usePlayer } from "./context/PlayerContext"
 import { auth } from "./firebase"
 
+const pageTransition: Transition = {
+  type: "tween",
+  ease: "anticipate",
+  duration: 0.5,
+}
+
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
   exit: { opacity: 0, y: -20 },
 }
 
-const pageTransition = {
-  type: "tween",
-  ease: "anticipate",
-  duration: 0.5,
-}
 
 function MotionWrapper({ children }: { children: React.ReactNode }) {
   return (
@@ -52,26 +54,17 @@ function AnimatedRoutes() {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
-        setIsLoggedIn(true);
-        const playerData = {
-          id: user.uid,
-          username: user.displayName || "Anonymous",
-          avatar: user.photoURL || "/src/assets/Profile/men1.png",
-          email: user.email || "",
-          language: "en",
-        };
-        setPlayer(playerData);
-        // Redirect to home if user is on a guest page
-        if (['/register', '/signup'].includes(location.pathname)) {
-          navigate('/');
-        }
+        // This logic will now be handled by our backend login flow,
+        // but we can keep it for the initial Google popup.
+        // The actual app state is set via the login() function in the context.
       } else {
+        // When Firebase detects a logout, we ensure our app state is also cleared.
         setIsLoggedIn(false);
         setPlayer(null);
       }
     });
     return () => unsubscribe();
-  }, [setIsLoggedIn, setPlayer, navigate, location.pathname]);
+  }, [setIsLoggedIn, setPlayer]);
 
 
   const handleNavigate = (page: string) => {
@@ -106,7 +99,6 @@ function AnimatedRoutes() {
               <MotionWrapper>
                 <Header
                   isLoggedIn={isLoggedIn}
-                  setIsLoggedIn={setIsLoggedIn}
                   setShowLogoutMsg={setShowLogoutMsg}
                   onNavigate={handleNavigate}
                 />

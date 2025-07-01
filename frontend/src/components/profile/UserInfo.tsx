@@ -5,122 +5,99 @@ import { useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
 import { Pencil, Upload, Eye, EyeOff } from "lucide-react"
 import { predefinedAvatars } from "./ProfileUtils"
+import { usePlayer } from "../../context/PlayerContext"
+import { userService } from "../../services/api"
 
-interface UserInfoProps {
-  avatar: string;
-  username: string;
-  email: string;
-  language: string;
-}
+export default function UserInfo() {
+  const { t, i18n } = useTranslation()
+  const { player, login } = usePlayer();
 
-export default function UserInfo({ avatar, username, email, language }: UserInfoProps) {
-  const { t } = useTranslation()
-
-  // States for editable fields
-  const [avatarFile, setAvatarFile] = useState<string | File>(avatar);
+  // --- State Management ---
+  const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  
+  // Form values
+  const [avatarFile, setAvatarFile] = useState<string | File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [usernameValue, setUsernameValue] = useState(username);
-  const [isEditingUsername, setIsEditingUsername] = useState(false);
-  const [usernameError, setUsernameError] = useState("");
-
-  const [emailValue, setEmailValue] = useState(email);
-  const [isEditingEmail, setIsEditingEmail] = useState(false);
-  const [emailError, setEmailError] = useState("");
-
+  const [usernameValue, setUsernameValue] = useState("");
+  const [languageValue, setLanguageValue] = useState("");
   const [passwordValue, setPasswordValue] = useState("");
-  const [isEditingPassword, setIsEditingPassword] = useState(false);
-  const [passwordError, setPasswordError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Errors
+  const [usernameError, setUsernameError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
 
-  const [languageValue, setLanguageValue] = useState(language);
-  const [isEditingLanguage, setIsEditingLanguage] = useState(false);
-
-  // Effect to update state when props change (e.g., user logs out and another logs in)
-  useEffect(() => {
-    setUsernameValue(username);
-    setEmailValue(email);
-    setLanguageValue(language);
-    setAvatarFile(avatar);
-    setAvatarPreview(null);
-  }, [username, email, language, avatar]);
-
-  const validateField = (field: string, value: string) => {
-    if (field === "username") {
-      if (value.length < 3) return t("usernameMinLength");
-      if (value.length > 20) return t("usernameMaxLength");
+  const resetState = () => {
+    if (player) {
+      setUsernameValue(player.username);
+      setLanguageValue(player.language);
+      setAvatarFile(player.avatar);
+      setAvatarPreview(null);
+      setUsernameError("");
+      setPasswordValue("");
+      setPasswordError("");
     }
-    if (field === "email") {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(value)) return t("invalidEmail");
-    }
-    if (field === "password") {
-      if (value.length < 6) return t("passwordMinLength");
-    }
-    return "";
   };
 
-  const saveField = async (field: "username" | "email" | "language" | "password") => {
-    let value = "";
-    if (field === "username") value = usernameValue;
-    else if (field === "email") value = emailValue;
-    else if (field === "language") value = languageValue;
-    else if (field === "password") value = passwordValue;
+  useEffect(() => {
+    resetState();
+  }, [player]);
 
-    const error = validateField(field, value);
-    if (error) {
-      if (field === "username") setUsernameError(error);
-      else if (field === "email") setEmailError(error);
-      else if (field === "password") setPasswordError(error);
+  const handleEditClick = () => {
+    resetState();
+    setIsEditing(true);
+  };
+  
+  const handleCancelClick = () => {
+    setIsEditing(false);
+    resetState();
+  };
+
+  const handleSave = async () => {
+    if (!player) return;
+    
+    if (usernameValue.length < 3) {
+      setUsernameError(t("usernameMinLength"));
       return;
     }
+    if (player.googleId === null && passwordValue && passwordValue.length < 6) {
+        setPasswordError(t("passwordMinLength"));
+        return;
+    }
+    setUsernameError("");
+    setPasswordError("");
+    
+    setLoading(true);
 
-    // Simulate API call
+    const formData = new FormData();
+    formData.append('username', usernameValue);
+    formData.append('language', languageValue);
+    
+    if (avatarFile instanceof File) {
+        formData.append('avatar', avatarFile, avatarFile.name);
+    } else if (typeof avatarFile === 'string') {
+        formData.append('predefinedAvatar', avatarFile);
+    }
+    
+    if (passwordValue) {
+        formData.append('password', passwordValue);
+    }
+
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      // TODO: Here you would make an API call to your backend to save the data
-      console.log(`Saving ${field}:`, value);
+        const { user: updatedUser } = await userService.updateProfile(player.id, formData);
+        login(updatedUser);
+        
+        if (i18n.language !== updatedUser.language) {
+          i18n.changeLanguage(updatedUser.language);
+        }
 
-      if (field === "username") {
-        setIsEditingUsername(false);
-        setUsernameError("");
-      } else if (field === "email") {
-        setIsEditingEmail(false);
-        setEmailError("");
-      } else if (field === "language") {
-        setIsEditingLanguage(false);
-      } else if (field === "password") {
-        setIsEditingPassword(false);
-        setPasswordValue("");
-        setShowPassword(false);
-        setPasswordError("");
-      }
-    } catch (error) {
-      console.error("Save failed:", error);
-    }
-  };
-
-  const cancelEdit = (field: "username" | "email" | "language" | "password") => {
-    if (field === "username") {
-      setIsEditingUsername(false);
-      setUsernameError("");
-      setUsernameValue(username);
-      setAvatarFile(avatar);
-      setAvatarPreview(null);
-    }
-    if (field === "email") {
-      setIsEditingEmail(false);
-      setEmailError("");
-      setEmailValue(email);
-    }
-    if (field === "language") {
-      setIsEditingLanguage(false);
-      setLanguageValue(language);
-    }
-    if (field === "password") {
-      setIsEditingPassword(false);
-      setPasswordError("");
-      setPasswordValue("");
-      setShowPassword(false);
+        setIsEditing(false);
+    } catch (error: any) {
+        console.error("Save failed:", error);
+        setUsernameError(error.message || t('profileSaveError'));
+    } finally {
+        setLoading(false);
     }
   };
 
@@ -141,231 +118,123 @@ export default function UserInfo({ avatar, username, email, language }: UserInfo
     setAvatarPreview(avatarPath);
   };
 
+  if (!player) {
+    return <div>{t('loading')}</div>;
+  }
+
+  const getDisplayAvatar = () => {
+      if (avatarPreview) return avatarPreview;
+      if (avatarFile instanceof File) return URL.createObjectURL(avatarFile);
+      if (typeof avatarFile === 'string' && !avatarFile.startsWith('/uploads')) {
+          return avatarFile;
+      }
+      if (player.avatar && player.avatar.startsWith('/uploads')) {
+          return `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}${player.avatar}`;
+      }
+      return player.avatar;
+  }
+  
+  // FIXED: Added an explicit index signature to the languageMap type.
+  const languageMap: { [key: string]: string } = {
+      en: "english",
+      es: "spanish",
+      fr: "french"
+  }
+
   return (
-    <div className="bg-[#20201d] text-[#FFFACD] rounded-xl p-6 space-y-6 max-w-md mx-auto text-center relative">
-      {/* Avatar + Username */}
-      <div className="relative flex flex-col items-center space-y-4">
-        <img
-          src={
-            avatarPreview ||
-            (typeof avatarFile === "string" ? avatarFile : avatarFile instanceof File ? URL.createObjectURL(avatarFile) : avatar)
-          }
-          alt="Avatar"
-          className="w-20 h-20 rounded-full border-2 border-[#FFFACD] object-cover"
-        />
-
-        {isEditingUsername ? (
-          <div className="flex flex-col items-center space-y-4 w-full">
-            <div className="grid grid-cols-2 gap-3 justify-center">
-              {predefinedAvatars.map((av, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => handlePredefinedAvatarClick(av.src)}
-                  className={`w-16 h-16 rounded-full border-2 cursor-pointer hover:border-[#FFFACD] transition-colors overflow-hidden ${
-                    avatarPreview === av.src ? "border-[#FFFACD]" : "border-[#2a2a27]"
-                  }`}
-                >
-                  <img src={av.src || "/placeholder.svg"} alt={av.alt} className="w-full h-full object-cover" />
-                </button>
-              ))}
-            </div>
-
-            <label className="cursor-pointer bg-[#FFFACD] text-[#20201d] px-4 py-2 rounded font-press text-sm hover:bg-opacity-90 transition-colors flex items-center gap-2">
-              <Upload size={16} />
-              {t("uploadImage")}
-              <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
-            </label>
-
-            <input
-              value={usernameValue}
-              onChange={(e) => setUsernameValue(e.target.value)}
-              placeholder={t("chooseNewUsername")}
-              className="bg-[#FFFACD] text-[#20201d] p-2 rounded text-center font-press w-full max-w-xs"
-              autoFocus
-            />
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => saveField("username")}
-                className="bg-[#FFFACD] text-[#20201d] px-4 py-2 rounded font-press hover:bg-opacity-90 transition-colors"
-              >
-                {t("save")}
-              </button>
-              <button
-                onClick={() => cancelEdit("username")}
-                className="text-red-400 underline text-sm font-press hover:text-red-300 transition-colors"
-              >
-                {t("cancel")}
-              </button>
-            </div>
-
-            {usernameError && <p className="text-red-400 text-xs font-press">{usernameError}</p>}
-          </div>
-        ) : (
-          <>
-            <h3 className="text-2xl font-press font-bold">{usernameValue}</h3>
-            <button
-              onClick={() => setIsEditingUsername(true)}
-              title={t("editUsername")}
-              className="absolute top-20 right-0 text-[#FFFACD] hover:text-white transition-colors p-1 rounded-full hover:bg-[#FFFACD] hover:bg-opacity-20"
-            >
-              <Pencil size={18} />
-            </button>
-          </>
+    <div className="bg-[#20201d] text-[#FFFACD] rounded-xl p-6 space-y-6 max-w-lg mx-auto relative">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-press font-bold text-[#FFFACD]">{t('profile')}</h2>
+        {!isEditing && (
+          <button onClick={handleEditClick} title={t("editProfile")}
+            className="flex items-center gap-2 bg-[#2a2a27] px-3 py-2 rounded font-press text-xs hover:bg-opacity-80">
+            <Pencil size={14} />
+            {t('edit')}
+          </button>
         )}
       </div>
 
-      {/* Email */}
-      <div className="relative">
-        <label className="block text-sm mb-2 font-press opacity-80">{t("email")}</label>
-        <div className="flex justify-center items-center space-x-2">
-          {isEditingEmail ? (
-            <div className="flex flex-col items-center gap-2 w-full">
-              <input
-                type="email"
-                value={emailValue}
-                onChange={(e) => setEmailValue(e.target.value)}
-                className="bg-[#FFFACD] text-[#20201d] p-2 rounded font-press w-full max-w-xs"
-                autoFocus
-              />
-              <div className="flex gap-2">
-                <button
-                  onClick={() => saveField("email")}
-                  className="bg-[#FFFACD] text-[#20201d] px-4 py-2 rounded font-press hover:bg-opacity-90 transition-colors"
-                >
-                  {t("save")}
-                </button>
-                <button
-                  onClick={() => cancelEdit("email")}
-                  className="text-red-400 underline text-sm font-press hover:text-red-300 transition-colors"
-                >
-                  {t("cancel")}
-                </button>
+      {isEditing ? (
+        // --- EDITING VIEW ---
+        <div className="space-y-6">
+          <div className="flex flex-col items-center gap-4">
+              <img src={getDisplayAvatar()} alt="Avatar" className="w-24 h-24 rounded-full border-4 border-[#FFFACD] object-cover"/>
+              <div className="grid grid-cols-4 gap-2">
+                  {predefinedAvatars.map((av, index) => (
+                      <button key={index} type="button" onClick={() => handlePredefinedAvatarClick(av.src)}
+                          className={`w-12 h-12 rounded-full border-2 overflow-hidden ${avatarFile === av.src ? "border-[#FFFACD]" : "border-transparent"}`}>
+                          <img src={av.src} alt={av.alt} className="w-full h-full object-cover" />
+                      </button>
+                  ))}
               </div>
-              {emailError && <p className="text-red-400 text-xs font-press">{emailError}</p>}
+              <label className="cursor-pointer bg-[#FFFACD] text-[#20201d] px-4 py-2 rounded font-press text-xs flex items-center gap-2">
+                  <Upload size={14} /> {t("uploadImage")}
+                  <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+              </label>
+          </div>
+          
+          <div>
+              <label className="block text-sm mb-2 font-press opacity-80 text-left">{t("username")}</label>
+              <input value={usernameValue} onChange={(e) => setUsernameValue(e.target.value)}
+                  className="bg-[#FFFACD] text-[#20201d] p-2 rounded font-press w-full"/>
+              {usernameError && <p className="text-red-400 text-xs font-press mt-1 text-left">{usernameError}</p>}
+          </div>
+
+          {player.googleId === null && (
+            <div>
+                <label className="block text-sm mb-2 font-press opacity-80 text-left">{t("changePassword")}</label>
+                <div className="relative">
+                    <input type={showPassword ? "text" : "password"} value={passwordValue} onChange={(e) => setPasswordValue(e.target.value)}
+                        placeholder={t('enterNewPassword')}
+                        className="bg-[#FFFACD] text-[#20201d] p-2 rounded font-press w-full pr-10"/>
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-2 top-1/2 transform -translate-y-1/2 text-[#20201d]">
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                </div>
+                {passwordError && <p className="text-red-400 text-xs font-press mt-1 text-left">{passwordError}</p>}
             </div>
-          ) : (
-            <span className="font-press truncate max-w-xs">{emailValue}</span>
           )}
-        </div>
-        {!isEditingEmail && (
-          <button
-            onClick={() => setIsEditingEmail(true)}
-            title={t("editEmail")}
-            className="absolute top-8 right-0 text-[#FFFACD] hover:text-white transition-colors p-1 rounded-full hover:bg-[#FFFACD] hover:bg-opacity-20"
-          >
-            <Pencil size={16} />
-          </button>
-        )}
-      </div>
 
-      {/* Password */}
-      <div className="relative">
-        <label className="block text-sm mb-2 font-press opacity-80">{t("password")}</label>
-        {isEditingPassword ? (
-          <div className="flex flex-col items-center gap-2 w-full">
-            <div className="relative w-full max-w-xs">
-              <input
-                type={showPassword ? "text" : "password"}
-                value={passwordValue}
-                onChange={(e) => setPasswordValue(e.target.value)}
-                placeholder={t("enterNewPassword")}
-                className="bg-[#FFFACD] text-[#20201d] p-2 rounded font-press w-full pr-10"
-                autoFocus
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-[#20201d] hover:text-opacity-70"
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => saveField("password")}
-                className="bg-[#FFFACD] text-[#20201d] px-4 py-2 rounded font-press hover:bg-opacity-90 transition-colors"
-              >
-                {t("save")}
-              </button>
-              <button
-                onClick={() => cancelEdit("password")}
-                className="text-red-400 underline text-sm font-press hover:text-red-300 transition-colors"
-              >
-                {t("cancel")}
-              </button>
-            </div>
-            {passwordError && <p className="text-red-400 text-xs font-press">{passwordError}</p>}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-2">
-            <span className="font-press">••••••••</span>
-          </div>
-        )}
-        {!isEditingPassword && (
-          <button
-            onClick={() => setIsEditingPassword(true)}
-            title={t("changePassword")}
-            className="absolute top-8 right-0 text-[#FFFACD] hover:text-white transition-colors p-1 rounded-full hover:bg-[#FFFACD] hover:bg-opacity-20"
-          >
-            <Pencil size={16} />
-          </button>
-        )}
-      </div>
-
-      {/* Language */}
-      <div className="relative">
-        <label className="block text-sm mb-2 font-press opacity-80">{t("preferredLanguage")}</label>
-        <div className="flex items-center justify-center space-x-2">
-          {isEditingLanguage ? (
-            <div className="flex flex-col items-center gap-2 w-full">
-              <select
-                value={languageValue}
-                onChange={(e) => setLanguageValue(e.target.value)}
-                className="bg-[#FFFACD] text-[#20201d] p-2 rounded font-press"
-              >
-                <option value="en">{t("english")}</option>
-                <option value="fr">{t("french")}</option>
-                <option value="es">{t("spanish")}</option>
+          <div>
+              <label className="block text-sm mb-2 font-press opacity-80 text-left">{t("preferredLanguage")}</label>
+              <select value={languageValue} onChange={(e) => setLanguageValue(e.target.value)}
+                  className="bg-[#FFFACD] text-[#20201d] p-2 rounded font-press w-full">
+                  <option value="en">{t("english")}</option>
+                  <option value="fr">{t("french")}</option>
+                  <option value="es">{t("spanish")}</option>
               </select>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => saveField("language")}
-                  className="bg-[#FFFACD] text-[#20201d] px-4 py-2 rounded font-press hover:bg-opacity-90 transition-colors"
-                >
-                  {t("save")}
-                </button>
-                <button
-                  onClick={() => cancelEdit("language")}
-                  className="text-red-400 underline text-sm font-press hover:text-red-300 transition-colors"
-                >
+          </div>
+
+          <div className="flex justify-end gap-4 pt-4">
+              <button onClick={handleCancelClick} className="text-gray-400 font-press text-sm hover:text-white">
                   {t("cancel")}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <span className="font-press">
-              {languageValue === "en"
-                ? t("english")
-                : languageValue === "fr"
-                  ? t("french")
-                  : languageValue === "es"
-                    ? t("spanish")
-                      : languageValue}
-            </span>
-          )}
+              </button>
+              <button onClick={handleSave} disabled={loading}
+                  className="bg-[#FFFACD] text-[#20201d] px-4 py-2 rounded font-press text-sm hover:bg-opacity-90 disabled:opacity-50">
+                  {loading ? t('loading') : t("save")}
+              </button>
+          </div>
         </div>
-        {!isEditingLanguage && (
-          <button
-            onClick={() => setIsEditingLanguage(true)}
-            title={t("editLanguage")}
-            className="absolute top-8 right-0 text-[#FFFACD] hover:text-white transition-colors p-1 rounded-full hover:bg-[#FFFACD] hover:bg-opacity-20"
-          >
-            <Pencil size={16} />
-          </button>
-        )}
-      </div>
+      ) : (
+        // --- DISPLAY VIEW ---
+        <div className="space-y-4 text-left">
+            <div className="flex items-center gap-4">
+                <img src={getDisplayAvatar()} alt="Avatar" className="w-20 h-20 rounded-full border-2 border-[#FFFACD] object-cover"/>
+                <div>
+                    <p className="font-press opacity-70 text-xs">{t('username')}</p>
+                    <p className="text-xl font-press font-bold">{player.username}</p>
+                </div>
+            </div>
+             <div>
+                <p className="font-press opacity-70 text-xs">{t('email')}</p>
+                <p className="font-press">{player.email}</p>
+            </div>
+             <div>
+                <p className="font-press opacity-70 text-xs">{t('language')}</p>
+                <p className="font-press capitalize">{t(languageMap[player.language] || player.language)}</p>
+            </div>
+        </div>
+      )}
     </div>
   )
 }
