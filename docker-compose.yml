@@ -4,31 +4,36 @@ services:
   # Frontend service (your React app)
   frontend:
     build:
-      context: ./frontend  # Path to the frontend directory
-      dockerfile: Dockerfile # Assumes you have a Dockerfile in ./frontend
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
-      - "5173:5173" # Map host port 5173 to container port 5173 (Vite's default)
+      - "5173:5173"
     environment:
-      - VITE_API_BASE_URL=http://backend:3001 # Frontend will talk to backend via this URL
-      # Add your Google Client ID here so Vite can access it
+      # Pass all required environment variables to the frontend container
+      - VITE_API_BASE_URL=http://backend:3001
       - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
+      - VITE_FIREBASE_API_KEY=${VITE_FIREBASE_API_KEY}
+      - VITE_FIREBASE_AUTH_DOMAIN=${VITE_FIREBASE_AUTH_DOMAIN}
+      - VITE_FIREBASE_PROJECT_ID=${VITE_FIREBASE_PROJECT_ID}
+      - VITE_FIREBASE_STORAGE_BUCKET=${VITE_FIREBASE_STORAGE_BUCKET}
+      - VITE_FIREBASE_MESSAGING_SENDER_ID=${VITE_FIREBASE_MESSAGING_SENDER_ID}
+      - VITE_FIREBASE_APP_ID=${VITE_FIREBASE_APP_ID}
     depends_on:
-      - backend # Ensures backend starts before frontend
+      - backend
     networks:
       - transcendence-net
 
   # Backend service (our new Fastify app)
   backend:
     build:
-      context: ./backend # Path to the backend directory
+      context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "3001:3001" # Map host port 3001 to container port 3001
+      - "3001:3001"
     volumes:
-      - ./backend/uploads:/usr/src/app/uploads # Persist uploaded avatars
-      - ./backend/transcendence.db:/usr/src/app/transcendence.db # Persist the database file
+      - ./backend/uploads:/usr/src/app/uploads
+      - ./backend/transcendence.db:/usr/src/app/transcendence.db
     environment:
-      # Pass the Google Client ID to the backend as well
       - GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
     networks:
       - transcendence-net
