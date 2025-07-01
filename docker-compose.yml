@@ -1,29 +1,26 @@
 version: '3.8'
 
 services:
-  # Frontend service (your React app)
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=http://backend:3001
+        - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
+        - VITE_FIREBASE_API_KEY=${VITE_FIREBASE_API_KEY}
+        - VITE_FIREBASE_AUTH_DOMAIN=${VITE_FIREBASE_AUTH_DOMAIN}
+        - VITE_FIREBASE_PROJECT_ID=${VITE_FIREBASE_PROJECT_ID}
+        - VITE_FIREBASE_STORAGE_BUCKET=${VITE_FIREBASE_STORAGE_BUCKET}
+        - VITE_FIREBASE_MESSAGING_SENDER_ID=${VITE_FIREBASE_MESSAGING_SENDER_ID}
+        - VITE_FIREBASE_APP_ID=${VITE_FIREBASE_APP_ID}
     ports:
       - "5173:5173"
-    environment:
-      # Pass all required environment variables to the frontend container
-      - VITE_API_BASE_URL=http://backend:3001
-      - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
-      - VITE_FIREBASE_API_KEY=${VITE_FIREBASE_API_KEY}
-      - VITE_FIREBASE_AUTH_DOMAIN=${VITE_FIREBASE_AUTH_DOMAIN}
-      - VITE_FIREBASE_PROJECT_ID=${VITE_FIREBASE_PROJECT_ID}
-      - VITE_FIREBASE_STORAGE_BUCKET=${VITE_FIREBASE_STORAGE_BUCKET}
-      - VITE_FIREBASE_MESSAGING_SENDER_ID=${VITE_FIREBASE_MESSAGING_SENDER_ID}
-      - VITE_FIREBASE_APP_ID=${VITE_FIREBASE_APP_ID}
     depends_on:
       - backend
     networks:
       - transcendence-net
 
-  # Backend service (our new Fastify app)
   backend:
     build:
       context: ./backend
@@ -33,8 +30,8 @@ services:
     volumes:
       - ./backend/uploads:/usr/src/app/uploads
       - ./backend/transcendence.db:/usr/src/app/transcendence.db
-    environment:
-      - GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
+    env_file:
+      - ./.env
     networks:
       - transcendence-net
 

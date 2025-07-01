@@ -3,27 +3,43 @@ FROM node:20-slim as build
 
 WORKDIR /app
 
+ARG VITE_API_BASE_URL
+ARG VITE_GOOGLE_CLIENT_ID
+ARG VITE_FIREBASE_API_KEY
+ARG VITE_FIREBASE_AUTH_DOMAIN
+ARG VITE_FIREBASE_PROJECT_ID
+ARG VITE_FIREBASE_STORAGE_BUCKET
+ARG VITE_FIREBASE_MESSAGING_SENDER_ID
+ARG VITE_FIREBASE_APP_ID
+
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
+ENV VITE_FIREBASE_API_KEY=$VITE_FIREBASE_API_KEY
+ENV VITE_FIREBASE_AUTH_DOMAIN=$VITE_FIREBASE_AUTH_DOMAIN
+ENV VITE_FIREBASE_PROJECT_ID=$VITE_FIREBASE_PROJECT_ID
+ENV VITE_FIREBASE_STORAGE_BUCKET=$VITE_FIREBASE_STORAGE_BUCKET
+ENV VITE_FIREBASE_MESSAGING_SENDER_ID=$VITE_FIREBASE_MESSAGING_SENDER_ID
+ENV VITE_FIREBASE_APP_ID=$VITE_FIREBASE_APP_ID
+
+
 COPY package*.json ./
 RUN npm install
 
 COPY . .
+# Now, when this command runs, Vite will have access to all the VITE_ variables
 RUN npm run build
 
-# Stage 2: Serve the application with a lightweight server
 FROM node:20-slim
 
 WORKDIR /app
 
-# Copy built assets from the build stage
 COPY --from=build /app/dist /app/dist
 COPY --from=build /app/package.json /app/package.json
 COPY --from=build /app/index.html /app/index.html
 
 
-# We need a small server to serve the static files, let's use 'serve'
 RUN npm install -g serve
 
-# Expose the port 'serve' will run on
 EXPOSE 5173
 
 # Start the server
