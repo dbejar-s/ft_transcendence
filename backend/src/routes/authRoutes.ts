@@ -2,9 +2,21 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import bcrypt from 'bcrypt';
 import { db } from '../db/database';
 import { OAuth2Client } from 'google-auth-library';
+import nodemailer from 'nodemailer';
+import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 
 const GOOGLE_CLIENT_ID = process.env.VITE_GOOGLE_CLIENT_ID; // You need to create this in your .env
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
+
+// Nodemailer transporter setup (Gmail SMTP)
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+    },
+});
 
 export async function authRoutes(fastify: FastifyInstance) {
     
@@ -52,10 +64,49 @@ export async function authRoutes(fastify: FastifyInstance) {
         if (!isPasswordValid) {
             return reply.status(401).send({ message: 'Invalid credentials' });
         }
-        
-        const { password: _, ...userWithoutPassword } = user;
-        // In a real app, you would generate a JWT here and send it back
-        reply.send({ message: 'Login successful', user: userWithoutPassword });
+
+        // Generate 2FA code
+        const twofaCode = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
+        const twofaExpires = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes from now
+        db.prepare('UPDATE users SET twofa_code = ?, twofa_expires = ?, twofa_enabled = 1 WHERE id = ?')
+          .run(twofaCode, twofaExpires, user.id);
+
+        // Send 2FA code via email
+        await transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: user.email,
+            subject: 'Your 2FA Code',
+            text: `Your 2FA code is: ${twofaCode}`,
+        });
+
+        reply.send({ message: '2FA code sent to your email. Please verify to continue.', userId: user.id });
+    });
+
+    // 2FA Verification endpoint
+    fastify.post('/verify-2fa', async (request: FastifyRequest, reply: FastifyReply) => {
+        const { userId, code } = request.body as any;
+        if (!userId || !code) {
+            return reply.status(400).send({ message: 'User ID and 2FA code are required' });
+        }
+        const stmt = db.prepare('SELECT * FROM users WHERE id = ?');
+        const user = stmt.get(userId) as any;
+        if (!user || !user.twofa_enabled) {
+            return reply.status(401).send({ message: '2FA not enabled or user not found' });
+        }
+        if (!user.twofa_code || !user.twofa_expires) {
+            return reply.status(401).send({ message: 'No 2FA code found. Please login again.' });
+        }
+        if (user.twofa_code !== code) {
+            return reply.status(401).send({ message: 'Invalid 2FA code' });
+        }
+        if (new Date() > new Date(user.twofa_expires)) {
+            return reply.status(401).send({ message: '2FA code expired. Please login again.' });
+        }
+        // Clear 2FA code after successful verification
+        db.prepare('UPDATE users SET twofa_code = NULL, twofa_expires = NULL WHERE id = ?').run(userId);
+        // Issue JWT
+        const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET as string, { expiresIn: '1h' });
+        reply.send({ message: '2FA verified. Login successful.', token });
     });
 
     // Google Sign-In

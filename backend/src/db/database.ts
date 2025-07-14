@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 
-const dbPath = path.join('/usr/src/app', 'transcendence.db');
+const dbPath = path.resolve(process.cwd(), 'transcendence.db');
 
 // Initialize the database connection
 export const db = new Database(dbPath, { verbose: console.log });
@@ -20,7 +20,10 @@ function initializeDatabase() {
       avatar TEXT,
       googleId TEXT UNIQUE,
       status TEXT DEFAULT 'offline',
-      language TEXT DEFAULT 'en'
+      language TEXT DEFAULT 'en',
+      twofa_enabled INTEGER DEFAULT 0, -- 0 = false, 1 = true
+      twofa_code TEXT,
+      twofa_expires DATETIME
     );
   `;
 

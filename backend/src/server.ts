@@ -1,3 +1,5 @@
+import dotenv from 'dotenv';
+dotenv.config();
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
@@ -7,6 +9,7 @@ import { userRoutes } from './routes/userRoutes';
 import { friendRoutes } from './routes/friendRoutes';
 import { matchRoutes } from './routes/matchRoutes';
 import { db } from './db/database';
+import { jwtMiddleware } from './jwtMiddleware';
 
 // Initialize Fastify server
 const fastify = Fastify({
@@ -33,6 +36,24 @@ fastify.register(authRoutes, { prefix: '/api/auth' });
 fastify.register(userRoutes, { prefix: '/api/users' });
 fastify.register(friendRoutes, { prefix: '/api/users/:userId/friends' });
 fastify.register(matchRoutes, { prefix: '/api/users/:userId/matches' });
+
+// Example: Protected route using JWT middleware
+/**
+ * Example protected route
+ *
+ * This route demonstrates how to protect endpoints using the JWT middleware.
+ * To access this route, the client must include a valid JWT in the Authorization header:
+ *   Authorization: Bearer <token>
+ */
+fastify.route({
+  method: 'GET',
+  url: '/api/protected',
+  preHandler: jwtMiddleware,
+  handler: async (request, reply) => {
+    // The decoded user info is available as (request as any).user
+    reply.send({ message: 'You have accessed a protected route!', user: (request as any).user });
+  },
+});
 
 // Graceful shutdown
 const gracefulShutdown = (signal: string) => {
