@@ -6,7 +6,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - VITE_API_BASE_URL=http://backend:3001
+        - VITE_API_BASE_URL=http://localhost:3001
         - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
         - VITE_FIREBASE_API_KEY=${VITE_FIREBASE_API_KEY}
         - VITE_FIREBASE_AUTH_DOMAIN=${VITE_FIREBASE_AUTH_DOMAIN}
@@ -29,7 +29,7 @@ services:
       - "3001:3001"
     volumes:
       - ./backend/uploads:/usr/src/app/uploads
-      - ./backend/transcendence.db:/usr/src/app/transcendence.db
+      - ./data:/usr/src/app/data
     env_file:
       - ./.env
     networks:

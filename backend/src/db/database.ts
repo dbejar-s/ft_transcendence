@@ -1,7 +1,16 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 
-const dbPath = path.resolve(process.cwd(), 'transcendence.db');
+import fs from 'fs';
+
+const dataDir = path.resolve(process.cwd(), 'data');
+
+// Ensure the data directory exists within the container
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+
+const dbPath = path.resolve(dataDir, 'transcendence.db');
 
 // Initialize the database connection
 export const db = new Database(dbPath, { verbose: console.log });
