@@ -1,82 +1,65 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Calendar, Trophy, Target, Clock, Filter } from "lucide-react"
 import { useTranslation } from "react-i18next"
-
-interface Match {
-  id: string
-  opponent: string
-  opponentAvatar: string
-  result: "win" | "loss" | "draw"
-  score: string
-  gameMode: string
-  duration: string
-  date: string
-}
-
-const mockMatches: Match[] = [
-  {
-    id: "1",
-    opponent: "GameMaster42",
-    opponentAvatar: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/men1-UBUKSD58QqHNKPzRwIbtHXIS0VfFI9.png",
-    result: "win",
-    score: "15-12",
-    gameMode: "Casual",
-    duration: "8m 32s",
-    date: "2024-01-15",
-  },
-  {
-    id: "2",
-    opponent: "PixelWarrior",
-    opponentAvatar: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/men2-ayoQtOjBQjL8ix8iXJRU5QPewisMM2.png",
-    result: "loss",
-    score: "8-15",
-    gameMode: "Casual",
-    duration: "12m 45s",
-    date: "2024-01-14",
-  },
-  {
-    id: "3",
-    opponent: "RetroGamer",
-    opponentAvatar: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/women1-xVfpB1ftNspiaMZmuBTBqe9J3hIVzq.png",
-    result: "win",
-    score: "21-18",
-    gameMode: "Tournament",
-    duration: "15m 23s",
-    date: "2024-01-13",
-  },
-  {
-    id: "4",
-    opponent: "CodeNinja",
-    opponentAvatar: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/women2-fqMouFHtOXkEvTzdUdS8T3qmoCnEjm.png",
-    result: "draw",
-    score: "10-10",
-    gameMode: "Casual",
-    duration: "20m 00s",
-    date: "2024-01-12",
-  },
-  {
-    id: "5",
-    opponent: "ArcadeKing",
-    opponentAvatar: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/men1-UBUKSD58QqHNKPzRwIbtHXIS0VfFI9.png",
-    result: "win",
-    score: "18-14",
-    gameMode: "Tournament",
-    duration: "9m 17s",
-    date: "2024-01-11",
-  },
-]
+import type { Match } from "../../types/Match"
 
 export default function MatchHistory() {
-  const [matches] = useState<Match[]>(mockMatches)
-  const [filter, setFilter] = useState<"all" | "win" | "loss" | "draw">("all")
+  const [fetchedMatches, setFetchedMatches] = useState<Match[]>([])
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState<"all" | "win" | "loss">("all")
   const [gameModeFilter, setGameModeFilter] = useState<"all" | "Casual" | "Tournament">("all")
   const { t } = useTranslation()
 
-  const filteredMatches = matches.filter((match) => {
+  useEffect(() => {
+    const fetchMatches = async () => {
+      try {
+        const response = await fetch('/api/matches', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        })
+        const data = await response.json()
+        
+        const transformedMatches = data.map((match: any) => ({
+          id: match.id,
+          opponent: match.opponent,
+          opponentAvatar: match.opponentAvatar || '/default-avatar.png',
+          result: match.result.toLowerCase() as "win" | "loss",
+          score: `${match.player1Score}-${match.player2Score}`,
+          gameMode: match.gameMode,
+          duration: calculateDuration(match.startedAt, match.endedAt),
+          date: match.playedAt
+        }))
+        
+        setFetchedMatches(transformedMatches)
+      } catch (error) {
+        console.error("Error fetching matches:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchMatches()
+  }, [])
+
+  const filteredMatches = fetchedMatches.filter((match) => {
     const matchesResult = filter === "all" || match.result === filter
     const matchesGameMode = gameModeFilter === "all" || match.gameMode === gameModeFilter
     return matchesResult && matchesGameMode
   })
+
+  const calculateDuration = (start: string, end: string): string => {
+    if (!start || !end) return "N/A"
+    
+    const startDate = new Date(start)
+    const endDate = new Date(end)
+    const diffInSeconds = Math.floor((endDate.getTime() - startDate.getTime()) / 1000)
+    
+    const minutes = Math.floor(diffInSeconds / 60)
+    const seconds = diffInSeconds % 60
+    
+    return `${minutes}m ${seconds}s`
+  }
 
   const getResultColor = (result: string) => {
     switch (result) {
@@ -84,8 +67,6 @@ export default function MatchHistory() {
         return "text-green-400"
       case "loss":
         return "text-red-400"
-      case "draw":
-        return "text-yellow-400"
       default:
         return "text-[#FFFACD]"
     }
@@ -97,18 +78,15 @@ export default function MatchHistory() {
         return "bg-green-600 bg-opacity-20 border-green-600"
       case "loss":
         return "bg-red-600 bg-opacity-20 border-red-600"
-      case "draw":
-        return "bg-yellow-600 bg-opacity-20 border-yellow-600"
       default:
         return "bg-[#2a2a27] border-[#FFFACD]"
     }
   }
 
   const stats = {
-    total: matches.length,
-    wins: matches.filter((m) => m.result === "win").length,
-    losses: matches.filter((m) => m.result === "loss").length,
-    draws: matches.filter((m) => m.result === "draw").length,
+    total: fetchedMatches.length,
+    wins: fetchedMatches.filter((m) => m.result === "win").length,
+    losses: fetchedMatches.filter((m) => m.result === "loss").length,
   }
 
   const winRate = stats.total > 0 ? ((stats.wins / stats.total) * 100).toFixed(1) : "0"
@@ -152,7 +130,6 @@ export default function MatchHistory() {
               { key: "all", label: t("all") || "All" },
               { key: "win", label: t("win") || "Win" },
               { key: "loss", label: t("loss") || "Loss" },
-              { key: "draw", label: t("draw") || "Draw" },
             ].map((filterOption) => (
               <button
                 key={filterOption.key}
@@ -195,7 +172,11 @@ export default function MatchHistory() {
 
       {/* Matches List */}
       <div className="space-y-3">
-        {filteredMatches.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-8 text-[#FFFACD] opacity-60">
+            <p className="font-press">{t("loading") || "Loading..."}</p>
+          </div>
+        ) : filteredMatches.length === 0 ? (
           <div className="text-center py-8 text-[#FFFACD] opacity-60">
             <Trophy size={48} className="mx-auto mb-4" />
             <p className="font-press">{t("noMatchesFound") || "No matches found"}</p>

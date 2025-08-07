@@ -1,55 +1,78 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Search, UserPlus, UserMinus, Clock } from "lucide-react"
 import type { Friend } from "./FriendProfile"
 import FriendProfile from "./FriendProfile"
 
-const mockFriends: Friend[] = [
-  {
-    id: "1",
-    username: "GameMaster42",
-    avatar: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/men1-UBUKSD58QqHNKPzRwIbtHXIS0VfFI9.png",
-    status: "online",
-    gamesPlayed: 127,
-  },
-  {
-    id: "2",
-    username: "PixelWarrior",
-    avatar: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/men2-ayoQtOjBQjL8ix8iXJRU5QPewisMM2.png",
-    status: "online",
-    lastSeen: "2 hours ago",
-    gamesPlayed: 89,
-  },
-  {
-    id: "3",
-    username: "RetroGamer",
-    avatar: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/women1-xVfpB1ftNspiaMZmuBTBqe9J3hIVzq.png",
-    status: "offline",
-    lastSeen: "1 day ago",
-    gamesPlayed: 203,
-  },
-]
+interface Match {
+  id: string;
+  opponent: string;
+  opponentAvatar: string;
+  result: "win" | "loss" | "draw";
+  score: string;
+  gameMode: string;
+  duration: string;
+  date: string;
+}
 
-export default function Friends() {
-  const [friends, setFriends] = useState<Friend[]>(mockFriends)
+interface Props {
+  userId: string;
+  recentMatches: Match[];
+}
+
+export default function Friends({ userId }: Props) {
+  const [friends, setFriends] = useState<Friend[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [filter, setFilter] = useState<"all" | "online" | "offline">("all")
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null)
   const { t } = useTranslation()
 
+  // Charger la liste d'amis depuis le backend
+  useEffect(() => {
+    fetch(`/api/users/${userId}/friends`)
+      .then(res => {
+        if (!res.ok) throw new Error("Failed to fetch friends");
+        return res.json();
+      })
+      .then((data: Friend[]) => setFriends(data))
+      .catch(console.error);
+  }, [userId]);
+
+  // Filtrage local
   const filteredFriends = friends.filter((friend) => {
     const matchesSearch = friend.username.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesFilter = filter === "all" || friend.status === filter
     return matchesSearch && matchesFilter
   })
 
-  const getStatusColor = (status: string) => {
-    return status === "online" ? "bg-green-500" : "bg-gray-500"
+  const getStatusColor = (status: string) => (status === "online" ? "bg-green-500" : "bg-gray-500")
+
+  // Supprimer un ami (API + local)
+  const removeFriend = async (friendId: string) => {
+    try {
+      const res = await fetch(`/api/users/${userId}/friends/${friendId}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error("Failed to remove friend");
+      setFriends(friends.filter((f) => f.id !== friendId));
+      if (selectedFriend?.id === friendId) setSelectedFriend(null);
+    } catch (e) {
+      console.error(e);
+      alert(t("errorRemovingFriend") || "Error removing friend");
+    }
   }
 
-  const removeFriend = (friendId: string) => {
-    setFriends(friends.filter((f) => f.id !== friendId))
-    if (selectedFriend?.id === friendId) setSelectedFriend(null)
+  // Charger le profil complet d’un ami (avec match history)
+  const loadFriendProfile = async (friendId: string) => {
+    try {
+      const res = await fetch(`/api/users/${userId}/friends/${friendId}/details`);
+      if (!res.ok) throw new Error("Failed to fetch friend details");
+      const data: Friend = await res.json();
+      setSelectedFriend(data);
+    } catch (e) {
+      console.error(e);
+      alert(t("errorLoadingFriendProfile") || "Error loading friend profile");
+    }
   }
 
   return (
@@ -96,23 +119,21 @@ export default function Friends() {
       {selectedFriend ? (
         <FriendProfile friend={selectedFriend} onClose={() => setSelectedFriend(null)} />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 max-h-[60vh] overflow-auto">
           {filteredFriends.length === 0 ? (
             <div className="text-center py-8 text-[#FFFACD] opacity-60">
               <div className="text-2xl mb-4">👥</div>
-              <p className="font-press">
-                {searchTerm ? t("noFriendsFound") : t("noFriendsDisplay")}
-              </p>
+              <p className="font-press">{searchTerm ? t("noFriendsFound") : t("noFriendsDisplay")}</p>
             </div>
           ) : (
             filteredFriends.map((friend) => (
               <div
                 key={friend.id}
-                className="bg-[#2a2a27] rounded-lg p-4 flex items-center justify-between hover:bg-opacity-80 transition-colors"
+                className="bg-[#2a2a27] rounded-lg p-4 flex items-center justify-between hover:bg-opacity-80 transition-colors cursor-pointer"
               >
                 <div
-                  className="flex items-center gap-4 cursor-pointer"
-                  onClick={() => setSelectedFriend(friend)}
+                  className="flex items-center gap-4"
+                  onClick={() => loadFriendProfile(friend.id)}
                 >
                   <div className="relative">
                     <img

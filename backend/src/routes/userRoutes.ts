@@ -11,6 +11,24 @@ const pump = util.promisify(pipeline);
 
 export async function userRoutes(fastify: FastifyInstance) {
 
+    fastify.get('/current', async (request: FastifyRequest, reply: FastifyReply) => {
+        if (!request.user) {
+        return reply.status(401).send({ message: 'Unauthorized' })
+        }
+
+        const userId = request.user.id
+        const user = db.prepare(`
+        SELECT id, username, email, avatar, language 
+        FROM users WHERE id = ?
+        `).get(userId)
+
+        if (!user) {
+        return reply.status(404).send({ message: 'User not found' })
+        }
+
+        reply.send(user)
+    })
+
     fastify.get('/:id', (request: FastifyRequest, reply: FastifyReply) => {
         const { id } = request.params as any;
         const stmt = db.prepare('SELECT id, username, email, avatar, status, language, googleId FROM users WHERE id = ?');
@@ -50,21 +68,26 @@ export async function userRoutes(fastify: FastifyInstance) {
         const setClauses: string[] = [];
         const params: (string | undefined)[] = [];
 
+        console.log('Received username:', username);
         if (username) {
            setClauses.push('username = ?');
            params.push(username);
         }
+
+        console.log('Received language:', language);
         if (language) {
            setClauses.push('language = ?');
            params.push(language);
         }
         // FIXED: Hash the password if it's being updated
+        console.log('Received password:', password);
         if (password) {
             const hashedPassword = await bcrypt.hash(password, 10);
             setClauses.push('password = ?');
             params.push(hashedPassword);
         }
 
+        console.log('Received Avatar:', predefinedAvatar, uploadedAvatarUrl);
         if (uploadedAvatarUrl) {
             setClauses.push('avatar = ?');
             params.push(uploadedAvatarUrl);

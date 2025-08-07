@@ -46,6 +46,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setPlayerState(playerData);
     setIsLoggedIn(true);
     localStorage.setItem('player', JSON.stringify(playerData));
+  i18n.changeLanguage(playerData.language);
   };
 
   // A logout function
