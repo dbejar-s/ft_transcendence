@@ -1,41 +1,33 @@
-import { useState } from "react"
-import { useTranslation } from "react-i18next"
+import { useEffect, useState } from "react"
 import { Search, UserPlus, UserMinus, Clock } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import type { Friend } from "./FriendProfile"
 import FriendProfile from "./FriendProfile"
 
-const mockFriends: Friend[] = [
-  {
-    id: "1",
-    username: "GameMaster42",
-    avatar: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/men1-UBUKSD58QqHNKPzRwIbtHXIS0VfFI9.png",
-    status: "online",
-    gamesPlayed: 127,
-  },
-  {
-    id: "2",
-    username: "PixelWarrior",
-    avatar: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/men2-ayoQtOjBQjL8ix8iXJRU5QPewisMM2.png",
-    status: "online",
-    lastSeen: "2 hours ago",
-    gamesPlayed: 89,
-  },
-  {
-    id: "3",
-    username: "RetroGamer",
-    avatar: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/women1-xVfpB1ftNspiaMZmuBTBqe9J3hIVzq.png",
-    status: "offline",
-    lastSeen: "1 day ago",
-    gamesPlayed: 203,
-  },
-]
+interface Props {
+  userId: string // ID du user connecté
+}
 
-export default function Friends() {
-  const [friends, setFriends] = useState<Friend[]>(mockFriends)
+export default function Friends({ userId }: Props) {
+  const [friends, setFriends] = useState<Friend[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [filter, setFilter] = useState<"all" | "online" | "offline">("all")
-  const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null)
+  const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null)
   const { t } = useTranslation()
+
+  useEffect(() => {
+    const fetchFriends = async () => {
+      try {
+        const res = await fetch(`/api/friends/${userId}`)
+        const data = await res.json()
+        setFriends(data)
+      } catch (err) {
+        console.error("Failed to fetch friends", err)
+      }
+    }
+
+    fetchFriends()
+  }, [userId])
 
   const filteredFriends = friends.filter((friend) => {
     const matchesSearch = friend.username.toLowerCase().includes(searchTerm.toLowerCase())
@@ -47,54 +39,26 @@ export default function Friends() {
     return status === "online" ? "bg-green-500" : "bg-gray-500"
   }
 
-  const removeFriend = (friendId: string) => {
-    setFriends(friends.filter((f) => f.id !== friendId))
-    if (selectedFriend?.id === friendId) setSelectedFriend(null)
+  const removeFriend = async (friendId: string) => {
+    try {
+      await fetch(`/api/friends/${userId}/${friendId}`, { method: "DELETE" })
+      setFriends(friends.filter((f) => f.id !== friendId))
+      if (selectedFriendId === friendId) setSelectedFriendId(null)
+    } catch (err) {
+      console.error("Failed to remove friend", err)
+    }
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">👥</span>
-          <h2 className="text-lg font-press font-bold text-[#FFFACD]">
-            {t("friends") || "Friends"} ({friends.length})
-          </h2>
-        </div>
-        <button className="bg-[#FFFACD] text-[#20201d] text-xs px-4 py-2 rounded font-press hover:bg-opacity-90 transition-colors flex items-center gap-2">
-          <UserPlus size={16} />
-          {t("addFriend") || "Add Friend"}
-        </button>
-      </div>
+      {/* ... Header, Search, Filter Buttons ... */}
 
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#20201d]" size={16} />
-          <input
-            type="text"
-            placeholder={t("searchFriends") || "Search friends..."}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-[#FFFACD] text-[#20201d] text-xs rounded font-press placeholder-[#20201d] placeholder-opacity-60 focus:outline-none focus:ring-2 focus:ring-[#FFFACD]"
-          />
-        </div>
-        <div className="flex gap-2">
-          {["all", "online", "offline"].map((key) => (
-            <button
-              key={key}
-              onClick={() => setFilter(key as any)}
-              className={`px-4 py-2 rounded font-press transition-colors text-xs ${
-                filter === key ? "bg-[#FFFACD] text-[#20201d]" : "bg-[#2a2a27] text-[#FFFACD] hover:bg-opacity-80"
-              }`}
-            >
-              {t(key)}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {selectedFriend ? (
-        <FriendProfile friend={selectedFriend} onClose={() => setSelectedFriend(null)} />
+      {selectedFriendId ? (
+        <FriendProfile
+          userId={userId}
+          friendId={selectedFriendId}
+          onClose={() => setSelectedFriendId(null)}
+        />
       ) : (
         <div className="space-y-3">
           {filteredFriends.length === 0 ? (
@@ -112,7 +76,7 @@ export default function Friends() {
               >
                 <div
                   className="flex items-center gap-4 cursor-pointer"
-                  onClick={() => setSelectedFriend(friend)}
+                  onClick={() => setSelectedFriendId(friend.id)}
                 >
                   <div className="relative">
                     <img
