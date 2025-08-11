@@ -1,15 +1,23 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom'; // ADDED
 import { signInWithGoogle } from "../firebase";
+// ADDED: Import our new services
+import { authService } from "../services/api";
+import { usePlayer } from '../context/PlayerContext';
 
 export default function SignUp() {
   const { t } = useTranslation();
+  const navigate = useNavigate(); // ADDED
+  const { login } = usePlayer(); // ADDED
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState(''); // ADDED username field
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // CHANGED: This now calls our backend API
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -22,25 +30,40 @@ export default function SignUp() {
     setLoading(true);
 
     try {
-      // TODO: Add backend API call here to register the user
-      console.log('User registered:', email);
+      await authService.register(email, username, password);
       alert(t('signUpSuccess'));
-      // TODO: Redirection
-    } catch (err) {
-      setError(t('signUpError'));
+      navigate('/register'); // Redirect to login page after successful registration
+    } catch (err: any) {
+      setError(err.message || t('signUpError'));
     } finally {
       setLoading(false);
     }
   };
 
+  // CHANGED: This now calls our backend API after getting Google info
   const handleGoogleLogin = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const result = await signInWithGoogle();
-      const user = result.user;
-      console.log("Google Sign-up successful:", user);
-      // After successful sign-in, Firebase's onAuthStateChanged will handle the redirect.
-    } catch (error) {
+      const googleUser = result.user;
+      
+      const googleUserData = {
+          token: await googleUser.getIdToken(),
+          email: googleUser.email,
+          name: googleUser.displayName,
+          sub: googleUser.uid,
+          picture: googleUser.photoURL,
+      };
+
+      const { user } = await authService.handleGoogleLogin(googleUserData);
+      login(user);
+      navigate('/');
+    } catch (error: any) {
       console.error("Google Sign-up failed:", error);
+      setError(error.message || 'Google login failed');
+    } finally {
+        setLoading(false);
     }
   };
 
@@ -56,6 +79,16 @@ export default function SignUp() {
             placeholder={t('email')}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            className="w-full p-3 rounded-lg bg-[#FFFACD] text-[#20201d] placeholder-[#777] focus:outline-none"
+            required
+          />
+          
+          {/* ADDED: Username input */}
+          <input
+            type="text"
+            placeholder={t('chooseUsername')}
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
             className="w-full p-3 rounded-lg bg-[#FFFACD] text-[#20201d] placeholder-[#777] focus:outline-none"
             required
           />
@@ -98,6 +131,7 @@ export default function SignUp() {
 
 		<button
 		onClick={handleGoogleLogin}
+        disabled={loading}
 		className="w-full bg-white text-[#20201d] py-3 rounded-lg font-semibold hover:bg-gray-100 transition"
 		>
 		<img

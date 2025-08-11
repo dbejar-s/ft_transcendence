@@ -1,145 +1,177 @@
 "use client"
 
-import type React from "react"
 import { useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
 import { Pencil, Upload, Eye, EyeOff } from "lucide-react"
 import { predefinedAvatars } from "./ProfileUtils"
 
 interface UserInfoProps {
-  avatar: string;
-  username: string;
-  email: string;
-  language: string;
+  initialUser: {
+    id: string
+    avatar: string
+    username: string
+    email: string
+    language: string
+  }
 }
 
-export default function UserInfo({ avatar, username, email, language }: UserInfoProps) {
-  const { t } = useTranslation()
+export default function UserInfo({ initialUser }: UserInfoProps) {
+  const { t, i18n } = useTranslation()
+  const [userData, setUserData] = useState(initialUser)
+  const [avatarFile, setAvatarFile] = useState<string | File>(initialUser.avatar)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [usernameValue, setUsernameValue] = useState(initialUser.username)
+  const [isEditingUsername, setIsEditingUsername] = useState(false)
+  const [usernameError, setUsernameError] = useState("")
+  const [emailValue, setEmailValue] = useState(initialUser.email)
+  const [isEditingEmail, setIsEditingEmail] = useState(false)
+  const [emailError, setEmailError] = useState("")
+  const [passwordValue, setPasswordValue] = useState("")
+  const [isEditingPassword, setIsEditingPassword] = useState(false)
+  const [passwordError, setPasswordError] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [languageValue, setLanguageValue] = useState(initialUser.language)
+  const [isEditingLanguage, setIsEditingLanguage] = useState(false)
 
-  // States for editable fields
-  const [avatarFile, setAvatarFile] = useState<string | File>(avatar);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [usernameValue, setUsernameValue] = useState(username);
-  const [isEditingUsername, setIsEditingUsername] = useState(false);
-  const [usernameError, setUsernameError] = useState("");
-
-  const [emailValue, setEmailValue] = useState(email);
-  const [isEditingEmail, setIsEditingEmail] = useState(false);
-  const [emailError, setEmailError] = useState("");
-
-  const [passwordValue, setPasswordValue] = useState("");
-  const [isEditingPassword, setIsEditingPassword] = useState(false);
-  const [passwordError, setPasswordError] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-
-  const [languageValue, setLanguageValue] = useState(language);
-  const [isEditingLanguage, setIsEditingLanguage] = useState(false);
-
-  // Effect to update state when props change (e.g., user logs out and another logs in)
   useEffect(() => {
-    setUsernameValue(username);
-    setEmailValue(email);
-    setLanguageValue(language);
-    setAvatarFile(avatar);
-    setAvatarPreview(null);
-  }, [username, email, language, avatar]);
+    if (initialUser) {
+      setUserData(initialUser)
+      setUsernameValue(initialUser.username)
+      setEmailValue(initialUser.email)
+      setLanguageValue(initialUser.language)
+      setAvatarFile(initialUser.avatar)
+    }
+  }, [initialUser])
 
   const validateField = (field: string, value: string) => {
     if (field === "username") {
-      if (value.length < 3) return t("usernameMinLength");
-      if (value.length > 20) return t("usernameMaxLength");
+      if (value.length < 3) return t("usernameMinLength") || "Username must be at least 3 characters"
+      if (value.length > 20) return t("usernameMaxLength") || "Username must be less than 20 characters"
     }
     if (field === "email") {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(value)) return t("invalidEmail");
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(value)) return t("invalidEmail") || "Invalid email format"
     }
     if (field === "password") {
-      if (value.length < 6) return t("passwordMinLength");
+      if (value.length < 6) return t("passwordMinLength") || "Password must be at least 6 characters"
     }
-    return "";
-  };
+    return ""
+  }
 
   const saveField = async (field: "username" | "email" | "language" | "password") => {
-    let value = "";
-    if (field === "username") value = usernameValue;
-    else if (field === "email") value = emailValue;
-    else if (field === "language") value = languageValue;
-    else if (field === "password") value = passwordValue;
+    const error = validateField(field, 
+      field === "username" ? usernameValue :
+      field === "email" ? emailValue :
+      field === "password" ? passwordValue :
+      languageValue
+    )
 
-    const error = validateField(field, value);
     if (error) {
-      if (field === "username") setUsernameError(error);
-      else if (field === "email") setEmailError(error);
-      else if (field === "password") setPasswordError(error);
-      return;
+      if (field === "username") setUsernameError(error)
+      else if (field === "email") setEmailError(error)
+      else if (field === "password") setPasswordError(error)
+      return
     }
 
-    // Simulate API call
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      // TODO: Here you would make an API call to your backend to save the data
-      console.log(`Saving ${field}:`, value);
-
-      if (field === "username") {
-        setIsEditingUsername(false);
-        setUsernameError("");
-      } else if (field === "email") {
-        setIsEditingEmail(false);
-        setEmailError("");
-      } else if (field === "language") {
-        setIsEditingLanguage(false);
-      } else if (field === "password") {
-        setIsEditingPassword(false);
-        setPasswordValue("");
-        setShowPassword(false);
-        setPasswordError("");
+      const formData = new FormData()
+      
+      if (field === "username" && avatarFile instanceof File) {
+        formData.append("avatar", avatarFile)
       }
+      
+      formData.append(field, 
+        field === "password" ? passwordValue :
+        field === "username" ? usernameValue :
+        field === "email" ? emailValue :
+        languageValue
+      )
+
+      const response = await fetch(`/api/users/${userData.id}`, {
+        method: "PUT",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("token")}`
+        },
+        body: formData
+      })
+      
+      const responseText = await response.text()
+
+      if (!response.ok) {
+        console.error("Error response text:", responseText)
+        throw new Error(responseText)
+      }
+
+      console.log("Success response text:", responseText)
+      const updatedUser = JSON.parse(responseText)
+
+      setUserData(updatedUser.user)
+      
+      if (field === "username") {
+        setIsEditingUsername(false)
+        setUsernameError("")
+      } else if (field === "email") {
+        setIsEditingEmail(false)
+        setEmailError("")
+      } else if (field === "language") {
+        await i18n.changeLanguage(languageValue)
+        setUserData(prev => ({ ...prev, language: languageValue }))
+        setIsEditingLanguage(false)
+      } else if (field === "password") {
+        setIsEditingPassword(false)
+        setPasswordValue("")
+        setShowPassword(false)
+        setPasswordError("")
+      }
+      setUserData(updatedUser.user);
     } catch (error) {
-      console.error("Save failed:", error);
+      console.error("Update error:", error)
+      const errorMsg = error instanceof Error ? error.message : "Update failed"
+      
+      if (field === "username") setUsernameError(errorMsg)
+      else if (field === "email") setEmailError(errorMsg)
+      else if (field === "password") setPasswordError(errorMsg)
     }
-  };
+  }
 
   const cancelEdit = (field: "username" | "email" | "language" | "password") => {
     if (field === "username") {
-      setIsEditingUsername(false);
-      setUsernameError("");
-      setUsernameValue(username);
-      setAvatarFile(avatar);
-      setAvatarPreview(null);
+      setIsEditingUsername(false)
+      setUsernameError("")
+      setUsernameValue(userData.username)
+      setAvatarFile(userData.avatar)
+      setAvatarPreview(null)
+    } else if (field === "email") {
+      setIsEditingEmail(false)
+      setEmailError("")
+      setEmailValue(userData.email)
+    } else if (field === "language") {
+      setIsEditingLanguage(false)
+      setLanguageValue(userData.language)
+    } else if (field === "password") {
+      setIsEditingPassword(false)
+      setPasswordError("")
+      setPasswordValue("")
+      setShowPassword(false)
     }
-    if (field === "email") {
-      setIsEditingEmail(false);
-      setEmailError("");
-      setEmailValue(email);
-    }
-    if (field === "language") {
-      setIsEditingLanguage(false);
-      setLanguageValue(language);
-    }
-    if (field === "password") {
-      setIsEditingPassword(false);
-      setPasswordError("");
-      setPasswordValue("");
-      setShowPassword(false);
-    }
-  };
+  }
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const file = e.target.files?.[0]
     if (file) {
-      setAvatarFile(file);
-      const reader = new FileReader();
+      setAvatarFile(file)
+      const reader = new FileReader()
       reader.onloadend = () => {
-        setAvatarPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+        setAvatarPreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
     }
-  };
+  }
 
   const handlePredefinedAvatarClick = (avatarPath: string) => {
-    setAvatarFile(avatarPath);
-    setAvatarPreview(avatarPath);
-  };
+    setAvatarFile(avatarPath)
+    setAvatarPreview(avatarPath)
+  }
 
   return (
     <div className="bg-[#20201d] text-[#FFFACD] rounded-xl p-6 space-y-6 max-w-md mx-auto text-center relative">
@@ -148,7 +180,7 @@ export default function UserInfo({ avatar, username, email, language }: UserInfo
         <img
           src={
             avatarPreview ||
-            (typeof avatarFile === "string" ? avatarFile : avatarFile instanceof File ? URL.createObjectURL(avatarFile) : avatar)
+            (typeof avatarFile === "string" ? avatarFile : avatarFile ? URL.createObjectURL(avatarFile) : "/default-avatar.png")
           }
           alt="Avatar"
           className="w-20 h-20 rounded-full border-2 border-[#FFFACD] object-cover"
@@ -173,14 +205,14 @@ export default function UserInfo({ avatar, username, email, language }: UserInfo
 
             <label className="cursor-pointer bg-[#FFFACD] text-[#20201d] px-4 py-2 rounded font-press text-sm hover:bg-opacity-90 transition-colors flex items-center gap-2">
               <Upload size={16} />
-              {t("uploadImage")}
+              {t("uploadImage") || "Upload Image"}
               <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
             </label>
 
             <input
               value={usernameValue}
               onChange={(e) => setUsernameValue(e.target.value)}
-              placeholder={t("chooseNewUsername")}
+              placeholder={t("chooseNewUsername") || "Choose new username"}
               className="bg-[#FFFACD] text-[#20201d] p-2 rounded text-center font-press w-full max-w-xs"
               autoFocus
             />
@@ -190,13 +222,13 @@ export default function UserInfo({ avatar, username, email, language }: UserInfo
                 onClick={() => saveField("username")}
                 className="bg-[#FFFACD] text-[#20201d] px-4 py-2 rounded font-press hover:bg-opacity-90 transition-colors"
               >
-                {t("save")}
+                {t("save") || "Save"}
               </button>
               <button
                 onClick={() => cancelEdit("username")}
                 className="text-red-400 underline text-sm font-press hover:text-red-300 transition-colors"
               >
-                {t("cancel")}
+                {t("cancel") || "Cancel"}
               </button>
             </div>
 
@@ -207,7 +239,7 @@ export default function UserInfo({ avatar, username, email, language }: UserInfo
             <h3 className="text-2xl font-press font-bold">{usernameValue}</h3>
             <button
               onClick={() => setIsEditingUsername(true)}
-              title={t("editUsername")}
+              title={t("editUsername") || "Edit username"}
               className="absolute top-20 right-0 text-[#FFFACD] hover:text-white transition-colors p-1 rounded-full hover:bg-[#FFFACD] hover:bg-opacity-20"
             >
               <Pencil size={18} />
@@ -218,7 +250,7 @@ export default function UserInfo({ avatar, username, email, language }: UserInfo
 
       {/* Email */}
       <div className="relative">
-        <label className="block text-sm mb-2 font-press opacity-80">{t("email")}</label>
+        <label className="block text-sm mb-2 font-press opacity-80">{t("email") || "Email"}</label>
         <div className="flex justify-center items-center space-x-2">
           {isEditingEmail ? (
             <div className="flex flex-col items-center gap-2 w-full">
@@ -234,13 +266,13 @@ export default function UserInfo({ avatar, username, email, language }: UserInfo
                   onClick={() => saveField("email")}
                   className="bg-[#FFFACD] text-[#20201d] px-4 py-2 rounded font-press hover:bg-opacity-90 transition-colors"
                 >
-                  {t("save")}
+                  {t("save") || "Save"}
                 </button>
                 <button
                   onClick={() => cancelEdit("email")}
                   className="text-red-400 underline text-sm font-press hover:text-red-300 transition-colors"
                 >
-                  {t("cancel")}
+                  {t("cancel") || "Cancel"}
                 </button>
               </div>
               {emailError && <p className="text-red-400 text-xs font-press">{emailError}</p>}
@@ -252,7 +284,7 @@ export default function UserInfo({ avatar, username, email, language }: UserInfo
         {!isEditingEmail && (
           <button
             onClick={() => setIsEditingEmail(true)}
-            title={t("editEmail")}
+            title={t("editEmail") || "Edit email"}
             className="absolute top-8 right-0 text-[#FFFACD] hover:text-white transition-colors p-1 rounded-full hover:bg-[#FFFACD] hover:bg-opacity-20"
           >
             <Pencil size={16} />
@@ -262,7 +294,7 @@ export default function UserInfo({ avatar, username, email, language }: UserInfo
 
       {/* Password */}
       <div className="relative">
-        <label className="block text-sm mb-2 font-press opacity-80">{t("password")}</label>
+        <label className="block text-sm mb-2 font-press opacity-80">{t("password") || "Password"}</label>
         {isEditingPassword ? (
           <div className="flex flex-col items-center gap-2 w-full">
             <div className="relative w-full max-w-xs">
@@ -270,7 +302,7 @@ export default function UserInfo({ avatar, username, email, language }: UserInfo
                 type={showPassword ? "text" : "password"}
                 value={passwordValue}
                 onChange={(e) => setPasswordValue(e.target.value)}
-                placeholder={t("enterNewPassword")}
+                placeholder={t("enterNewPassword") || "Enter new password"}
                 className="bg-[#FFFACD] text-[#20201d] p-2 rounded font-press w-full pr-10"
                 autoFocus
               />
@@ -287,13 +319,13 @@ export default function UserInfo({ avatar, username, email, language }: UserInfo
                 onClick={() => saveField("password")}
                 className="bg-[#FFFACD] text-[#20201d] px-4 py-2 rounded font-press hover:bg-opacity-90 transition-colors"
               >
-                {t("save")}
+                {t("save") || "Save"}
               </button>
               <button
                 onClick={() => cancelEdit("password")}
                 className="text-red-400 underline text-sm font-press hover:text-red-300 transition-colors"
               >
-                {t("cancel")}
+                {t("cancel") || "Cancel"}
               </button>
             </div>
             {passwordError && <p className="text-red-400 text-xs font-press">{passwordError}</p>}
@@ -306,7 +338,7 @@ export default function UserInfo({ avatar, username, email, language }: UserInfo
         {!isEditingPassword && (
           <button
             onClick={() => setIsEditingPassword(true)}
-            title={t("changePassword")}
+            title={t("changePassword") || "Change password"}
             className="absolute top-8 right-0 text-[#FFFACD] hover:text-white transition-colors p-1 rounded-full hover:bg-[#FFFACD] hover:bg-opacity-20"
           >
             <Pencil size={16} />
@@ -316,7 +348,7 @@ export default function UserInfo({ avatar, username, email, language }: UserInfo
 
       {/* Language */}
       <div className="relative">
-        <label className="block text-sm mb-2 font-press opacity-80">{t("preferredLanguage")}</label>
+        <label className="block text-sm mb-2 font-press opacity-80">{t("preferredLanguage") || "Preferred Language"}</label>
         <div className="flex items-center justify-center space-x-2">
           {isEditingLanguage ? (
             <div className="flex flex-col items-center gap-2 w-full">
@@ -325,41 +357,41 @@ export default function UserInfo({ avatar, username, email, language }: UserInfo
                 onChange={(e) => setLanguageValue(e.target.value)}
                 className="bg-[#FFFACD] text-[#20201d] p-2 rounded font-press"
               >
-                <option value="en">{t("english")}</option>
-                <option value="fr">{t("french")}</option>
-                <option value="es">{t("spanish")}</option>
+                <option value="en">{t("english") || "English"}</option>
+                <option value="fr">{t("french") || "French"}</option>
+                <option value="es">{t("spanish") || "Spanish"}</option>
               </select>
               <div className="flex gap-2">
                 <button
                   onClick={() => saveField("language")}
                   className="bg-[#FFFACD] text-[#20201d] px-4 py-2 rounded font-press hover:bg-opacity-90 transition-colors"
                 >
-                  {t("save")}
+                  {t("save") || "Save"}
                 </button>
                 <button
                   onClick={() => cancelEdit("language")}
                   className="text-red-400 underline text-sm font-press hover:text-red-300 transition-colors"
                 >
-                  {t("cancel")}
+                  {t("cancel") || "Cancel"}
                 </button>
               </div>
             </div>
           ) : (
             <span className="font-press">
               {languageValue === "en"
-                ? t("english")
+                ? t("english") || "English"
                 : languageValue === "fr"
-                  ? t("french")
+                  ? t("french") || "French"
                   : languageValue === "es"
-                    ? t("spanish")
-                      : languageValue}
+                    ? t("spanish") || "Spanish"
+                    : languageValue}
             </span>
           )}
         </div>
         {!isEditingLanguage && (
           <button
             onClick={() => setIsEditingLanguage(true)}
-            title={t("editLanguage")}
+            title={t("editLanguage") || "Edit language"}
             className="absolute top-8 right-0 text-[#FFFACD] hover:text-white transition-colors p-1 rounded-full hover:bg-[#FFFACD] hover:bg-opacity-20"
           >
             <Pencil size={16} />

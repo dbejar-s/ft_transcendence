@@ -1,21 +1,20 @@
 import { useTranslation } from "react-i18next";
 import { LogOut } from "lucide-react";
-import { logout } from "../firebase"; // Import the logout function
+import { usePlayer } from "../context/PlayerContext"; // Import usePlayer
 
 interface HeaderProps {
   isLoggedIn: boolean;
-  setIsLoggedIn: (value: boolean) => void;
   setShowLogoutMsg: (value: boolean) => void;
   onNavigate: (page: string) => void;
 }
 
 export default function Header({
   isLoggedIn,
-  setIsLoggedIn,
   setShowLogoutMsg,
   onNavigate,
 }: HeaderProps) {
   const { t, i18n } = useTranslation();
+  const { logout } = usePlayer(); // Get the logout function from context
 
   const guestLinks = [
     { path: "register", label: t("register") },
@@ -32,7 +31,7 @@ export default function Header({
     const confirmed = window.confirm(t("logoutConfirm"));
     if (confirmed) {
       try {
-        await logout();
+        logout(); // Use the context logout function
         setShowLogoutMsg(true);
         onNavigate("home");
       } catch (error) {

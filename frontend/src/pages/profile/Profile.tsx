@@ -4,14 +4,24 @@ import UserInfo from "../../components/profile/UserInfo";
 import Friends from "../../components/profile/Friends";
 import MatchHistory from "../../components/profile/MatchHistory";
 import Statistics from "../../components/profile/Statistics";
-import { usePlayer } from "../../context/PlayerContext"; // Import the usePlayer hook
+import { usePlayer } from "../../context/PlayerContext";
+import type { Match } from "../../types/Match"
+
+interface Player {
+  id: string;
+  username: string;
+  email: string;
+  avatar: string;
+  language?: string;
+  recentMatches?: Match[];
+  stats?: any;
+}
 
 export default function Profile() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"user" | "friends" | "matches" | "stats">("user");
-  const { player } = usePlayer(); // Get player data from context
+  const { player } = usePlayer() as { player: Player };
 
-  // If the player data is not yet loaded, show a loading message or return null
   if (!player) {
     return <div>{t("loading") || "Loading..."}</div>;
   }
@@ -56,11 +66,34 @@ export default function Profile() {
 
       {/* Content */}
       <div className="bg-[#20201d] rounded-xl p-6 shadow-lg border border-[#FFFACD] border-opacity-20">
-        {activeTab === "user" && <UserInfo {...player} />}
-        {activeTab === "friends" && <Friends />}
-        {activeTab === "matches" && <MatchHistory />}
-        {activeTab === "stats" && <Statistics />}
-      </div>
-    </div>
-  );
+        {/* FIXED: Removed props from UserInfo */}
+        {activeTab === "user" && (
+          <UserInfo 
+            initialUser={{
+              id: player.id,
+              username: player.username,
+              email: player.email,
+              avatar: player.avatar,
+              language: player.language || 'en'
+            }} 
+          />
+        )}
+        
+        {activeTab === "friends" && (
+          <Friends 
+            userId={player.id} 
+            recentMatches={player.recentMatches || []} 
+          />
+        )}
+        
+        {activeTab === "matches" && (
+          <MatchHistory />
+        )}
+        
+        {activeTab === "stats" && player.stats && (
+          <Statistics/>
+        )}
+            </div>
+          </div>
+        );
 }
