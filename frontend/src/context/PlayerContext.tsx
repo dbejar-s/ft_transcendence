@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, type ReactNode, useEffect } from "react"
+import i18n from 'i18next';
 
 // The Player object that will be stored in our context and localStorage
 interface Player {
@@ -8,6 +9,7 @@ interface Player {
   email: string
   language: string
   googleId?: string | null; // FIXED: Added optional googleId property
+  provider?: string;
 }
 
 interface PlayerContextType {

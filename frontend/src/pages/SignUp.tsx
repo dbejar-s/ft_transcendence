@@ -32,7 +32,7 @@ export default function SignUp() {
     try {
       await authService.register(email, username, password);
       alert(t('signUpSuccess'));
-      navigate('/register'); // Redirect to login page after successful registration
+      navigate('/completeprofile'); // Redirect to login page after successful registration
     } catch (err: any) {
       setError(err.message || t('signUpError'));
     } finally {
@@ -53,6 +53,7 @@ export default function SignUp() {
           email: googleUser.email,
           name: googleUser.displayName,
           sub: googleUser.uid,
+          language: navigator.language.split('-')[0] || 'en',
           picture: googleUser.photoURL,
       };
 
@@ -83,7 +84,7 @@ export default function SignUp() {
             required
           />
           
-          {/* ADDED: Username input */}
+          {/* ADDED: Username input -> in complete profile */}
           <input
             type="text"
             placeholder={t('chooseUsername')}

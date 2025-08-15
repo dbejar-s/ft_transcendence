@@ -14,6 +14,7 @@ import NotFound from "./pages/NotFound"
 import SignUp from "./pages/SignUp"
 import Header from "./components/Header"
 import Footer from "./components/Footer"
+import TwoFactorAuth from "./pages/TwoFactorAuth";
 import { usePlayer } from "./context/PlayerContext"
 import { auth } from "./firebase"
 
@@ -78,6 +79,8 @@ function AnimatedRoutes() {
     ...(!isLoggedIn ? [
       { path: "/register", element: <Register /> },
       { path: "/signup", element: <SignUp /> },
+      { path: "/2fa", element: <TwoFactorAuth /> },
+      { path: "/completeprofile", element: <CompleteProfile /> },
     ] : []),
     // Authenticated only routes
     ...(isLoggedIn ? [

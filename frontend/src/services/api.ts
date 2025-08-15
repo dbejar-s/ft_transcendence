@@ -26,20 +26,28 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
 }
 
 // --- Auth Service ---
-export const authService = {
-  login: (email: string, password: string) => apiFetch('/api/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ email, password }),
-  }),
-  register: (email: string, username: string, password: string) => apiFetch('/api/auth/register', {
-    method: 'POST',
-    body: JSON.stringify({ email, username, password }),
-  }),
-  handleGoogleLogin: (googleUserData: any) => apiFetch('/api/auth/google', {
-    method: 'POST',
-    body: JSON.stringify(googleUserData),
-  }),
-};
+  export const authService = {
+    login: (email: string, password: string) => apiFetch('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }),
+    verify2FA: (userId: string, code: string) => apiFetch('/api/auth/verify-2fa', {
+      method: 'POST',
+      body: JSON.stringify({ userId, code }),
+    }),
+    register: (email: string, username: string, password: string) => apiFetch('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ email, username, password }),
+    }),
+    handleGoogleLogin: (googleUserData: any) => apiFetch('/api/auth/google', {
+      method: 'POST',
+      body: JSON.stringify(googleUserData),
+    }),
+    loginWithGoogle: (googleUserData: any) => apiFetch('/api/auth/google', {
+      method: 'POST',
+      body: JSON.stringify(googleUserData),
+    }),
+  };
 
 // --- User Service ---
 export const userService = {

@@ -1,42 +1,49 @@
-import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
 import { Upload, User, Globe, Check } from "lucide-react"
 import {
   predefinedAvatars,
   handleAvatarUpload,
   submitProfile,
-  validateField
+  //validateField
 } from "../../components/profile/ProfileUtils"
 import type { AvatarType } from "../../components/profile/ProfileUtils"
+import { usePlayer } from "../../context/PlayerContext"
 
 export default function CompleteProfile() {
   const { t, i18n } = useTranslation()
-  const [username, setUsername] = useState("")
+  const { player } = usePlayer()
+
+  //const [username, setUsername] = useState(player?.username || "")
   const [avatar, setAvatar] = useState<AvatarType>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [language, setLanguage] = useState(i18n.language || "en")
   const [error, setError] = useState<string | null>(null)
-  const [usernameError, setUsernameError] = useState("")
+  //const [usernameError, setUsernameError] = useState("")
   const [loading, setLoading] = useState(false)
 
-  // Handle username input and validation
-  const handleUsernameChange = (value: string) => {
-    setUsername(value)
-    validateField("username", value, setUsernameError, t)
-  }
+  // google avatar 
+  useEffect(() => {
+    if (player?.provider === "google" && player.avatar) {
+      setAvatar(player.avatar)
+      setPreviewUrl(player.avatar)
+    }
+  }, [player])
 
-  // Submit the profile after validation
+  // const handleUsernameChange = (value: string) => {
+  //   setUsername(value)
+  //   validateField("username", value, setUsernameError, t)
+  // }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!validateField("username", username, setUsernameError, t)) return
+    // if (!validateField("username", username, setUsernameError, t)) return
 
-    const success = await submitProfile(username, language, avatar, setError, setLoading, t)
-    if (success) window.location.href = "/home"
+    const success = await submitProfile(player?.username!, language, avatar, setError, setLoading, t)
+    if (success) window.location.href = "/"
   }
 
-  // Determine which avatar to display (preview, predefined, or default)
   const getDisplayAvatar = () => {
     if (previewUrl) return previewUrl
     if (typeof avatar === "string") return avatar
@@ -127,7 +134,7 @@ export default function CompleteProfile() {
           </div>
 
           {/* Username Field */}
-          <div className="space-y-2 text-sm">
+          {/* <div className="space-y-2 text-sm">
             <div className="flex items-center gap-2">
               <User size={20} className="text-[#FFFACD]" />
               <label className="text-sm font-press font-semibold">{t("chooseUsername")}</label>
@@ -145,7 +152,7 @@ export default function CompleteProfile() {
               }`}
             />
             {usernameError && <p className="text-red-400 font-press">{usernameError}</p>}
-          </div>
+          </div> */}
 
           {/* Language Dropdown */}
           <div className="space-y-2 text-sm">
@@ -174,7 +181,7 @@ export default function CompleteProfile() {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={loading || !!usernameError || !username.trim()}
+            disabled={loading } //|| !!usernameError || !username.trim()}
             className="w-full bg-[#FFFACD] text-[#20201d] font-press font-bold text-lg py-4 rounded-lg hover:bg-opacity-90 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
           >
             {loading ? (
