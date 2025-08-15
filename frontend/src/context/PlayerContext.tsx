@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, type ReactNode, useEffect } from "react"
+import i18n from 'i18next';
 
 // The Player object that will be stored in our context and localStorage
 interface Player {
