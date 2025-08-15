@@ -14,7 +14,6 @@ interface Player {
   avatar: string;
   language?: string;
   recentMatches?: Match[];
-  stats?: any;
 }
 
 export default function Profile() {
@@ -66,31 +65,30 @@ export default function Profile() {
 
       {/* Content */}
       <div className="bg-[#20201d] rounded-xl p-6 shadow-lg border border-[#FFFACD] border-opacity-20">
-        {/* FIXED: Removed props from UserInfo */}
         {activeTab === "user" && (
-          <UserInfo 
+          <UserInfo
             initialUser={{
               id: player.id,
               username: player.username,
               email: player.email,
               avatar: player.avatar,
               language: player.language || 'en'
-            }} 
+            }}
           />
         )}
-        
+
         {activeTab === "friends" && (
-          <Friends 
-            userId={player.id} 
-            recentMatches={player.recentMatches || []} 
+          <Friends
+            userId={player.id}
+            recentMatches={player.recentMatches || []}
           />
         )}
-        
+
         {activeTab === "matches" && (
           <MatchHistory />
         )}
-        
-        {activeTab === "stats" && player.stats && (
+
+        {activeTab === "stats" && (
           <Statistics/>
         )}
             </div>
