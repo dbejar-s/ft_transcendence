@@ -106,7 +106,9 @@ export async function authRoutes(fastify: FastifyInstance) {
         db.prepare('UPDATE users SET twofa_code = NULL, twofa_expires = NULL WHERE id = ?').run(userId);
         // Issue JWT
         const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET as string, { expiresIn: '1h' });
-        reply.send({ message: '2FA verified. Login successful.', token });
+        // Return user info (without password) so frontend can set context
+        const { password, ...userWithoutPassword } = user;
+        reply.send({ message: '2FA verified. Login successful.', token, user: userWithoutPassword });
     });
 
     // Google Sign-In

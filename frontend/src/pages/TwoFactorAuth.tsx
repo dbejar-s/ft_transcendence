@@ -10,7 +10,7 @@ export default function TwoFactorAuth() {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
-  const { setIsLoggedIn } = usePlayer();
+  const { login, setIsLoggedIn } = usePlayer();
 
   // Retrieve the userId passed from the login page
   const userId = (location.state as { userId: string })?.userId;
@@ -23,7 +23,19 @@ export default function TwoFactorAuth() {
     try {
       const res = await authService.verify2FA(userId, code);
       localStorage.setItem("token", res.token);
-      setIsLoggedIn(true);
+      if (res.user) {
+        login({
+          id: res.user.id,
+          email: res.user.email,
+          username: res.user.username,
+          avatar: res.user.avatar,
+          language: res.user.language || 'en',
+          provider: res.user.googleId ? 'google' : undefined,
+        });
+      } else {
+        // Fallback: minimal login state if user is not returned (shouldn't happen now)
+        setIsLoggedIn(true);
+      }
       navigate("/");
     } catch (err: any) {
       setError(err.message || t("invalidCode") || "Invalid verification code");
