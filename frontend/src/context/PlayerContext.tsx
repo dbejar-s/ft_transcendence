@@ -56,6 +56,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setPlayerState(null);
     setIsLoggedIn(false);
     localStorage.removeItem('player');
+    localStorage.removeItem('token');
   };
   
   const setPlayer = (playerData: Player | null) => {
