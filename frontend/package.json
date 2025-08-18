@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@fontsource/press-start-2p": "^5.2.6",
+    "@react-oauth/google": "^0.12.2",
     "express": "^5.1.0",
     "firebase": "^11.9.1",
     "framer-motion": "^12.15.0",

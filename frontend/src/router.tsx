@@ -14,6 +14,7 @@ import NotFound from "./pages/NotFound"
 import SignUp from "./pages/SignUp"
 import Header from "./components/Header"
 import Footer from "./components/Footer"
+import TwoFactorAuth from "./pages/TwoFactorAuth";
 import { usePlayer } from "./context/PlayerContext"
 import { auth } from "./firebase"
 
@@ -53,15 +54,13 @@ function AnimatedRoutes() {
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        // This logic will now be handled by our backend login flow,
-        // but we can keep it for the initial Google popup.
-        // The actual app state is set via the login() function in the context.
-      } else {
-        // When Firebase detects a logout, we ensure our app state is also cleared.
+      // Guard against clearing backend-authenticated sessions
+      const hasBackendToken = !!localStorage.getItem('token');
+      if (!user && !hasBackendToken) {
         setIsLoggedIn(false);
         setPlayer(null);
       }
+      // If firebase has a user, leave context changes to explicit login() calls
     });
     return () => unsubscribe();
   }, [setIsLoggedIn, setPlayer]);
@@ -78,6 +77,8 @@ function AnimatedRoutes() {
     ...(!isLoggedIn ? [
       { path: "/register", element: <Register /> },
       { path: "/signup", element: <SignUp /> },
+      { path: "/2fa", element: <TwoFactorAuth /> },
+      { path: "/completeprofile", element: <CompleteProfile /> },
     ] : []),
     // Authenticated only routes
     ...(isLoggedIn ? [

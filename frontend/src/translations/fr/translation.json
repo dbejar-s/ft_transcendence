@@ -120,5 +120,7 @@
     "viewResults": "Voir les résultats",
     "participants": "Participants",
     "noTournaments": "Aucun tournoi disponible.",
-    "noResults": "Aucun résultat disponible."
+    "noResults": "Aucun résultat disponible.",
+    "twoFactorDescription": "Veuillez entrer le code à 6 chiffres que nous avons envoyé à votre adresse e-mail.",
+    "enterCode": "Entrez le code à 6 chiffres"
 }

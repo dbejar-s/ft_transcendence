@@ -9,6 +9,7 @@ interface Player {
   email: string
   language: string
   googleId?: string | null; // FIXED: Added optional googleId property
+  provider?: string;
 }
 
 interface PlayerContextType {
@@ -55,6 +56,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setPlayerState(null);
     setIsLoggedIn(false);
     localStorage.removeItem('player');
+    localStorage.removeItem('token');
   };
   
   const setPlayer = (playerData: Player | null) => {

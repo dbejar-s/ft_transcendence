@@ -120,5 +120,7 @@
     "viewResults": "View Results",
     "participants": "Participants",
     "noTournaments": "No tournaments available.",
-    "noResults": "No results available."
+    "noResults": "No results available.",
+    "twoFactorDescription": "Please enter the 6-digit code we sent to your email.",
+    "enterCode": "Enter 6-digit code"
 }
