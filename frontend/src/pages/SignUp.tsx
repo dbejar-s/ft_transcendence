@@ -30,15 +30,29 @@ export default function SignUp() {
     setLoading(true);
 
     try {
+      // Step 1: register user
       await authService.register(email, username, password);
-      alert(t('signUpSuccess'));
-      navigate('/completeprofile'); // Redirect to login page after successful registration
+
+      // Step 2: login to get 2FA code sent
+      const { userId } = await authService.login(email, password);
+
+      // Step 3: ask the user to input the 2FA code (you need a small form or prompt)
+      const code = prompt('Enter the 2FA code sent to your email');
+      if (!code) throw new Error('2FA code required');
+
+      // Step 4: verify 2FA
+      const { token, user } = await authService.verify2FA(userId, code);
+
+      localStorage.setItem('token', token);
+      login(user);
+      navigate('/completeprofile');
     } catch (err: any) {
       setError(err.message || t('signUpError'));
     } finally {
       setLoading(false);
     }
   };
+
 
   // CHANGED: This now calls our backend API after getting Google info
   const handleGoogleLogin = async () => {
@@ -67,7 +81,6 @@ export default function SignUp() {
         setLoading(false);
     }
   };
-
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#2a2a27] text-[#FFFACD] p-6">

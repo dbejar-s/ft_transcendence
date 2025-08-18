@@ -41,6 +41,7 @@ export default function CompleteProfile() {
     // if (!validateField("username", username, setUsernameError, t)) return
 
     const success = await submitProfile(player?.username!, language, avatar, setError, setLoading, t)
+    alert(t('signUpSuccess'));
     if (success) window.location.href = "/"
   }
 

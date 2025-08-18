@@ -46,7 +46,7 @@ export default function TwoFactorAuth() {
     <div className="min-h-screen flex items-center justify-center bg-[#2a2a27] text-[#FFFACD] p-6">
       <div className="bg-[#20201d] p-8 rounded-xl shadow-xl w-full max-w-md border border-[#FFFACD] border-opacity-20">
         <h2 className="text-xl font-press mb-6 text-center">
-          {t("twoFactorTitle") || "Two-Factor Authentication"}
+          {"Two-Factor Authentication"}
         </h2>
 
         <p className="mb-6 text-center text-sm text-[#FFFACD] opacity-80">
@@ -70,7 +70,7 @@ export default function TwoFactorAuth() {
             type="submit"
             className="w-full bg-[#FFFACD] text-[#20201d] font-press text-base py-3 rounded-lg hover:bg-[#e0e0a0] transition"
           >
-            {t("verify") || "Verify Code"}
+            {t("Verify") || "Verify Code"}
           </button>
         </form>
       </div>
