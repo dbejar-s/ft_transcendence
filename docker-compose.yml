@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   frontend:
     build:
@@ -26,12 +24,26 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "3001:3001"
+      - "3001:3001" 
+      - "4001-4010:4001-4010"
     volumes:
       - ./backend/uploads:/usr/src/app/uploads
       - ./data:/usr/src/app/data
     env_file:
       - ./.env
+    networks:
+      - transcendence-net
+
+  pong-server:
+    build:
+      context: ./pong-server
+      dockerfile: Dockerfile
+    command: ["./netpong_server", "0.0.0.0", "4000"]
+    ports:
+      - "4000:4000"
+    expose:
+      - "4000"
+      - "4001-4010"
     networks:
       - transcendence-net
 
