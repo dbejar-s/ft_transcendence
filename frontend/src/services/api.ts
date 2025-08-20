@@ -4,6 +4,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001
 
 // A helper function for making fetch requests
 async function apiFetch(endpoint: string, options: RequestInit = {}) {
+  // ... (the rest of the function is unchanged)
   const url = `${API_BASE_URL}${endpoint}`;
   
   const headers = {
@@ -17,7 +18,7 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
     const errorData = await response.json().catch(() => ({ message: 'An unknown error occurred' }));
     throw new Error(errorData.message || 'API request failed');
   }
-
+  
   const contentType = response.headers.get('content-type');
   if (contentType && contentType.includes('application/json')) {
     return response.json();
@@ -31,6 +32,11 @@ export const authService = {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   }),
+  // ADD THIS FUNCTION
+  verify2FA: (userId: string, code: string) => apiFetch('/api/auth/verify-2fa', {
+    method: 'POST',
+    body: JSON.stringify({ userId, code }),
+  }),
   register: (email: string, username: string, password: string) => apiFetch('/api/auth/register', {
     method: 'POST',
     body: JSON.stringify({ email, username, password }),
@@ -39,6 +45,11 @@ export const authService = {
     method: 'POST',
     body: JSON.stringify(googleUserData),
   }),
+  // This is a duplicate, let's remove it for clarity, handleGoogleLogin is enough
+  // loginWithGoogle: (googleUserData: any) => apiFetch('/api/auth/google', {
+  //   method: 'POST',
+  //   body: JSON.stringify(googleUserData),
+  // }),
 };
 
 // --- User Service ---

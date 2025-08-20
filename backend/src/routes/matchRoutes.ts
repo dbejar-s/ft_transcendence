@@ -1,75 +1,71 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
-import { db } from '../db/database'
+// backend/src/routes/matchRoutes.ts
+import { FastifyInstance } from 'fastify';
+import net from 'net';
+import { startWsProxy } from '../wsProxy';
+
+// This counter helps create unique WebSocket ports for each new game,
+// preventing conflicts if multiple games are running.
+let gameIdCounter = 0;
 
 export async function matchRoutes(fastify: FastifyInstance) {
-  fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!request.user) {
-      return reply.status(401).send({ message: 'Unauthorized' })
-    }
+  fastify.post('/start', async (request, reply) => {
+    return new Promise((resolve, reject) => {
+      const client = new net.Socket();
 
-    const userId = request.user.id
+      client.connect(4000, 'pong-server', () => {
+        console.log('Backend connected to pong-server to request a new game.');
+        const PROTOCOL_VERSION = 0;
+        const MESSAGE_CLIENT_START = 0; // This tells the server to create a new game
+        const startMsg = Buffer.alloc(4);
+        startMsg.writeUInt8(PROTOCOL_VERSION, 0);
+        startMsg.writeUInt8(MESSAGE_CLIENT_START, 1);
+        startMsg.writeUInt16BE(0, 2); // Length is 0 for this message type
+        client.write(startMsg);
+      });
 
-    try {
-      const matches = db.prepare(`
-        SELECT 
-          m.id,
-          CASE
-            WHEN m.player1Id = ? THEN p2.username
-            ELSE p1.username
-          END as opponent,
-          CASE
-            WHEN m.player1Id = ? THEN p2.avatar
-            ELSE p1.avatar
-          END as opponentAvatar,
-          CASE
-            WHEN m.winnerId = ? THEN 'win'
-            WHEN m.winnerId IS NULL THEN 'draw'
-            ELSE 'loss'
-          END as result,
-          m.player1Score,
-          m.player2Score,
-          m.gameMode,
-          m.playedAt,
-          m.startedAt,
-          m.endedAt
-        FROM matches m
-        JOIN users p1 ON m.player1Id = p1.id
-        JOIN users p2 ON m.player2Id = p2.id
-        WHERE m.player1Id = ? OR m.player2Id = ?
-        ORDER BY m.playedAt DESC
-      `).all(userId, userId, userId, userId, userId)
+      client.on('data', (data: Buffer) => {
+        // The C server responds with a GAME_INIT message.
+        // Header: 1 byte version, 1 byte type, 2 bytes length.
+        // Body: 2 bytes p1_port, 2 bytes p2_port. Total message size is 8 bytes.
+        if (data.length >= 8 && data.readUInt8(1) === 0 && data.readUInt16BE(2) === 4) {
+          // **THE FIX IS HERE:**
+          // Correctly read the port numbers from the binary buffer.
+          // The body starts at offset 4. Each port is a Big Endian unsigned 16-bit integer.
+          const player1TcpPort = data.readUInt16BE(4);
+          const player2TcpPort = data.readUInt16BE(6);
+          console.log(`Received ports from pong-server: P1=${player1TcpPort}, P2=${player2TcpPort}`);
 
-      reply.send(matches)
-    } catch (error: any) {
-      reply.status(500).send({ message: 'Database error', error: error.message })
-    }
-  })
+          client.destroy();
 
-  fastify.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { player1Id, player2Id, player1Score, player2Score, gameMode } = request.body as {
-      player1Id: string
-      player2Id: string
-      player1Score: number
-      player2Score: number
-      gameMode: string
-    }
+          const gameId = gameIdCounter++;
+          const wsPort1 = 4001 + (gameId * 2);
+          const wsPort2 = 4002 + (gameId * 2);
 
-    if (!player1Id || !player2Id || player1Score === undefined || player2Score === undefined || !gameMode) {
-      return reply.status(400).send({ message: 'Missing required match data' })
-    }
+          // Start a new WebSocket proxy for this specific game's ports
+          startWsProxy(wsPort1, wsPort2, player1TcpPort, player2TcpPort);
 
-    const winnerId = player1Score > player2Score ? player1Id : player2Score > player1Score ? player2Id : null
+          resolve(
+            reply.send({
+              wsUrls: [`ws://localhost:${wsPort1}`, `ws://localhost:${wsPort2}`],
+              tcpPorts: { player1: player1TcpPort, player2: player2TcpPort },
+            })
+          );
+        } else {
+          console.error('Received malformed or unexpected message from pong-server.');
+          client.destroy();
+          reject(new Error('Malformed response from game server'));
+        }
+      });
 
-    try {
-      const stmt = db.prepare(`
-        INSERT INTO matches (player1Id, player2Id, player1Score, player2Score, winnerId, gameMode)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `)
-      const info = stmt.run(player1Id, player2Id, player1Score, player2Score, winnerId, gameMode)
+      client.on('error', (err) => {
+        console.error('Backend error connecting to pong-server:', err);
+        reply.status(500).send({ error: 'Cannot connect to the game server' });
+        reject(err);
+      });
 
-      reply.status(201).send({ message: 'Match added successfully', matchId: info.lastInsertRowid })
-    } catch (error: any) {
-      reply.status(500).send({ message: 'Database error', error: error.message })
-    }
-  })
+      client.on('close', () => {
+        console.log('Initial connection to pong-server closed.');
+      });
+    });
+  });
 }

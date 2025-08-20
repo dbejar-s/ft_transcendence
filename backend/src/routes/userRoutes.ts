@@ -6,19 +6,20 @@ import path from 'path';
 import util from 'util';
 import { pipeline } from 'stream';
 import bcrypt from 'bcrypt'; // Import bcrypt
+import { jwtMiddleware } from '../jwtMiddleware'; // Import the middleware
 
 const pump = util.promisify(pipeline);
 
 export async function userRoutes(fastify: FastifyInstance) {
 
-    fastify.get('/current', async (request: FastifyRequest, reply: FastifyReply) => {
+    fastify.get('/current', { preHandler: [jwtMiddleware] }, async (request: FastifyRequest, reply: FastifyReply) => {
         if (!request.user) {
         return reply.status(401).send({ message: 'Unauthorized' })
         }
 
         const userId = request.user.id
         const user = db.prepare(`
-        SELECT id, username, email, avatar, language 
+        SELECT id, username, email, avatar, language
         FROM users WHERE id = ?
         `).get(userId)
 
@@ -40,10 +41,10 @@ export async function userRoutes(fastify: FastifyInstance) {
             reply.status(404).send({ message: 'User not found' });
         }
     });
-    
+
     fastify.put('/:id', async (request: FastifyRequest, reply: FastifyReply) => {
         const { id } = request.params as any;
-        
+
         const parts = request.parts();
         const fields: { [key: string]: any } = {};
         let uploadedAvatarUrl: string | undefined;
@@ -54,9 +55,9 @@ export async function userRoutes(fastify: FastifyInstance) {
                 await fsp.mkdir(uploadsDir, { recursive: true });
                 const filename = `${id}-${Date.now()}-${part.filename}`;
                 const avatarPath = path.join(uploadsDir, filename);
-                
+
                 await pump(part.file, fs.createWriteStream(avatarPath));
-                
+
                 uploadedAvatarUrl = `/uploads/${filename}`;
             } else {
                 fields[part.fieldname] = part.value;
@@ -95,7 +96,7 @@ export async function userRoutes(fastify: FastifyInstance) {
             setClauses.push('avatar = ?');
             params.push(predefinedAvatar);
         }
-        
+
         if (setClauses.length > 0) {
             try {
                 const stmt = db.prepare(`UPDATE users SET ${setClauses.join(', ')} WHERE id = ?`);
@@ -109,7 +110,7 @@ export async function userRoutes(fastify: FastifyInstance) {
                 return reply.status(500).send({ message: 'An unexpected error occurred on the server.' });
             }
         }
-        
+
         const updatedUserStmt = db.prepare('SELECT id, username, email, avatar, status, language, googleId FROM users WHERE id = ?');
         const updatedUser = updatedUserStmt.get(id);
 

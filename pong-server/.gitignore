@@ -1,0 +1,10 @@
+*.a
+*.o
+bin
+*.log
+*.out*
+*.txt
+.cache
+compile_commands.json
+netpong_server
+test_client

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, type ReactNode, useEffect } from "react"
+import i18n from 'i18next';
 
 // The Player object that will be stored in our context and localStorage
 interface Player {
@@ -7,7 +8,8 @@ interface Player {
   avatar: string
   email: string
   language: string
-  googleId?: string | null; // FIXED: Added optional googleId property
+  googleId?: string | null;
+  provider?: string; // ADD THIS LINE
 }
 
 interface PlayerContextType {
@@ -15,7 +17,6 @@ interface PlayerContextType {
   login: (playerData: Player) => void;
   logout: () => void;
   isLoggedIn: boolean;
-  // These are kept for legacy compatibility but login/logout are preferred
   setPlayer: (player: Player | null) => void
   setIsLoggedIn: (value: boolean) => void
 }
