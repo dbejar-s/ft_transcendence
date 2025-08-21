@@ -34,8 +34,9 @@ pnpm-debug.log
 .DS_Store
 Thumbs.db
 
-# TypeScript cache file
+# TypeScript cache file and database
 *.tsbuildinfo
+*.db
 
 # --- Project Specific ---
 
@@ -50,3 +51,4 @@ Thumbs.db
 # These should not be in version control. In a real application,
 # they would be stored in a cloud storage service like S3.
 /backend/uploads/
+data/*.db
