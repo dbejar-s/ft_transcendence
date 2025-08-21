@@ -122,5 +122,7 @@
     "noTournaments": "No hay torneos disponibles.",
     "noResults": "No hay resultados disponibles.",
     "twoFactorDescription": "Por favor, introduzca el código de 6 dígitos que le enviamos a su correo electrónico.",
-    "enterCode": "Introduzca el código de 6 dígitos"
+    "enterCode": "Introduzca el código de 6 dígitos",
+    "enterUsername": "Introduzca el nombre de usuario",
+    "noUsersFound": "No se encontraron usuarios"
 }

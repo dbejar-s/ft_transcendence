@@ -76,7 +76,7 @@ export default function UserInfo({ initialUser }: UserInfoProps) {
     try {
       const formData = new FormData()
       
-      if (field === "username" && avatarFile instanceof File) {
+      if (avatarFile instanceof File) {
         formData.append("avatar", avatarFile)
       }
       
@@ -104,8 +104,6 @@ export default function UserInfo({ initialUser }: UserInfoProps) {
 
       console.log("Success response text:", responseText)
       const updatedUser = JSON.parse(responseText)
-
-      setUserData(updatedUser.user)
       
       if (field === "username") {
         setIsEditingUsername(false)

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 import { Search, UserPlus, UserMinus, Clock } from "lucide-react"
 import type { Friend } from "./FriendProfile"
 import FriendProfile from "./FriendProfile"
+import AddFriendOverlay from "./AddFriend"
 
 interface Match {
   id: string;
@@ -25,9 +26,10 @@ export default function Friends({ userId }: Props) {
   const [searchTerm, setSearchTerm] = useState("")
   const [filter, setFilter] = useState<"all" | "online" | "offline">("all")
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null)
+  const [showOverlay, setShowOverlay] = useState(false)
   const { t } = useTranslation()
 
-  // Charger la liste d'amis depuis le backend
+  // Load friends list from backend
   useEffect(() => {
     fetch(`/api/users/${userId}/friends`)
       .then(res => {
@@ -38,7 +40,6 @@ export default function Friends({ userId }: Props) {
       .catch(console.error);
   }, [userId]);
 
-  // Filtrage local
   const filteredFriends = friends.filter((friend) => {
     const matchesSearch = friend.username.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesFilter = filter === "all" || friend.status === filter
@@ -46,23 +47,28 @@ export default function Friends({ userId }: Props) {
   })
 
   const getStatusColor = (status: string) => (status === "online" ? "bg-green-500" : "bg-gray-500")
-
-  // Supprimer un ami (API + local)
+  
+  // delete friend
   const removeFriend = async (friendId: string) => {
     try {
-      const res = await fetch(`/api/users/${userId}/friends/${friendId}`, {
-        method: 'DELETE',
+      const res = await fetch(`http://localhost:3001/api/users/${userId}/friends/${friendId}`, {
+        method: "DELETE",
       });
       if (!res.ok) throw new Error("Failed to remove friend");
-      setFriends(friends.filter((f) => f.id !== friendId));
+
+      const refreshed = await fetch(`http://localhost:3001/api/users/${userId}/friends`);
+      if (!refreshed.ok) throw new Error("Failed to refresh friends list");
+      const data: Friend[] = await refreshed.json();
+
+      setFriends(data);
       if (selectedFriend?.id === friendId) setSelectedFriend(null);
     } catch (e) {
       console.error(e);
       alert(t("errorRemovingFriend") || "Error removing friend");
     }
-  }
+  };
 
-  // Charger le profil complet d’un ami (avec match history)
+  // load friend profile
   const loadFriendProfile = async (friendId: string) => {
     try {
       const res = await fetch(`/api/users/${userId}/friends/${friendId}/details`);
@@ -75,8 +81,14 @@ export default function Friends({ userId }: Props) {
     }
   }
 
+  // add new friend and update state
+  const handleFriendAdded = (newFriend: Friend) => {
+    setFriends((prev) => [...prev, newFriend])
+  }
+
   return (
     <div className="space-y-6">
+      {/* HEADER */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span className="text-2xl">👥</span>
@@ -84,12 +96,16 @@ export default function Friends({ userId }: Props) {
             {t("friends") || "Friends"} ({friends.length})
           </h2>
         </div>
-        <button className="bg-[#FFFACD] text-[#20201d] text-xs px-4 py-2 rounded font-press hover:bg-opacity-90 transition-colors flex items-center gap-2">
+        <button
+          onClick={() => setShowOverlay(true)}
+          className="bg-[#FFFACD] text-[#20201d] text-xs px-4 py-2 rounded font-press hover:bg-opacity-90 transition-colors flex items-center gap-2"
+        >
           <UserPlus size={16} />
           {t("addFriend") || "Add Friend"}
         </button>
       </div>
 
+      {/* SEARCH + FILTER */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#20201d]" size={16} />
@@ -116,6 +132,7 @@ export default function Friends({ userId }: Props) {
         </div>
       </div>
 
+      {/* FRIEND LIST */}
       {selectedFriend ? (
         <FriendProfile friend={selectedFriend} onClose={() => setSelectedFriend(null)} />
       ) : (
@@ -168,6 +185,15 @@ export default function Friends({ userId }: Props) {
             ))
           )}
         </div>
+      )}
+
+      {/* OVERLAY Add Friend */}
+      {showOverlay && (
+        <AddFriendOverlay
+          userId={userId}
+          onClose={() => setShowOverlay(false)}
+          onFriendAdded={handleFriendAdded}
+        />
       )}
     </div>
   )

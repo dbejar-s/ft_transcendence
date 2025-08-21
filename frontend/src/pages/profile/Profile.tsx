@@ -87,10 +87,11 @@ export default function Profile() {
         {activeTab === "matches" && (
           <MatchHistory />
         )}
-
+        
         {activeTab === "stats" && (
-          <Statistics/>
+          <Statistics userId={player.id} />
         )}
+
             </div>
           </div>
         );

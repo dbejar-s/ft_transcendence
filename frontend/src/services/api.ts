@@ -90,3 +90,7 @@ export const matchHistoryService = {
         body: JSON.stringify(matchData),
     }),
 };
+
+export const statisticsService = {
+  getUserStats: (userId: string) => apiFetch(`/api/stats/${userId}`),
+}

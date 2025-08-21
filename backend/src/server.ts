@@ -25,6 +25,7 @@ fastify.register(require('@fastify/static'), {
 // Routes
 fastify.register(apiRoutes, { prefix: '/api' });
 
+// Protected example route
 fastify.route({
   method: 'GET',
   url: '/api/protected',
@@ -34,6 +35,7 @@ fastify.route({
   },
 });
 
+// Graceful shutdown
 const gracefulShutdown = (signal: string) => {
   console.log(`Received ${signal}. Shutting down gracefully.`);
   fastify.close(() => {
