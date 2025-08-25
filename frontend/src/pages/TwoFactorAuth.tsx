@@ -1,3 +1,4 @@
+// frontend/src/pages/TwoFactorAuth.tsx
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -12,10 +13,8 @@ export default function TwoFactorAuth() {
   const { t } = useTranslation();
   const { login, setIsLoggedIn } = usePlayer();
 
-  // Retrieve the userId passed from the login page
-  const userId = (location.state as { userId: string })?.userId;
+  const { userId, next } = (location.state as { userId: string, next?: string }) || {};
 
-  // Handle 2FA form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -38,10 +37,11 @@ export default function TwoFactorAuth() {
           provider: res.user.googleId ? 'google' : undefined,
         });
       } else {
-        // Fallback: minimal login state if user is not returned
         setIsLoggedIn(true);
       }
-      navigate("/");
+      
+      // Redirect to the 'next' path if it exists, otherwise default to home
+      navigate(next || "/");
     } catch (err: any) {
       setError(err.message || t("invalidCode") || "Invalid verification code");
     }

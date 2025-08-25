@@ -1,23 +1,22 @@
+// frontend/src/pages/SignUp.tsx
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom'; // ADDED
+import { useNavigate } from 'react-router-dom';
 import { signInWithGoogle } from "../firebase";
-// ADDED: Import our new services
 import { authService } from "../services/api";
 import { usePlayer } from '../context/PlayerContext';
 
 export default function SignUp() {
   const { t } = useTranslation();
-  const navigate = useNavigate(); // ADDED
-  const { login } = usePlayer(); // ADDED
+  const navigate = useNavigate();
+  const { login } = usePlayer();
   const [email, setEmail] = useState('');
-  const [username, setUsername] = useState(''); // ADDED username field
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // CHANGED: This now calls our backend API
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -30,22 +29,25 @@ export default function SignUp() {
     setLoading(true);
 
     try {
-      // Step 1: register user
+      // Step 1: Register the user with their details
       await authService.register(email, username, password);
 
-      // Step 2: login to get 2FA code sent
-      const { userId } = await authService.login(email, password);
+      // Step 2: Log the user in to trigger the 2FA code email
+      const loginResponse = await authService.login(email, password);
 
-      // Step 3: ask the user to input the 2FA code (you need a small form or prompt)
-      const code = prompt('Enter the 2FA code sent to your email');
-      if (!code) throw new Error('2FA code required');
+      // Step 3: Redirect to the 2FA page, passing the userId and a flag
+      // indicating that the next step is to complete their profile.
+      if (loginResponse.userId) {
+        navigate("/2fa", { 
+          state: { 
+            userId: loginResponse.userId,
+            next: '/completeprofile' // Tell the 2FA page where to go next
+          } 
+        });
+      } else {
+        throw new Error("Failed to initiate 2FA process after registration.");
+      }
 
-      // Step 4: verify 2FA
-      const { token, user } = await authService.verify2FA(userId, code);
-
-      localStorage.setItem('token', token);
-      login(user);
-      navigate('/completeprofile');
     } catch (err: any) {
       setError(err.message || t('signUpError'));
     } finally {
@@ -53,8 +55,6 @@ export default function SignUp() {
     }
   };
 
-
-  // CHANGED: This now calls our backend API after getting Google info
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError(null);
@@ -71,9 +71,15 @@ export default function SignUp() {
           picture: googleUser.photoURL,
       };
 
-      const { user } = await authService.handleGoogleLogin(googleUserData);
+      const { user, isNewUser } = await authService.handleGoogleLogin(googleUserData);
       login(user);
-      navigate('/');
+      
+      // If it's a new user, send them to complete their profile
+      if (isNewUser) {
+        navigate('/completeprofile');
+      } else {
+        navigate('/');
+      }
     } catch (error: any) {
       console.error("Google Sign-up failed:", error);
       setError(error.message || 'Google login failed');
@@ -97,7 +103,6 @@ export default function SignUp() {
             required
           />
           
-          {/* ADDED: Username input -> in complete profile */}
           <input
             type="text"
             placeholder={t('chooseUsername')}
