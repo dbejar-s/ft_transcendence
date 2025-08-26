@@ -13,7 +13,7 @@ export default function MatchHistory() {
   useEffect(() => {
     const fetchMatches = async () => {
       try {
-        const response = await fetch('/api/matches', {
+        const response = await fetch('http://localhost:3001/api/matches', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }

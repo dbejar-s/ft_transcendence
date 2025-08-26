@@ -17,11 +17,47 @@ export default function Game() {
   const [showOverlay, setShowOverlay] = useState(true);
   const [wsPlayer1, setWsPlayer1] = useState<WebSocket | null>(null);
   const [wsPlayer2, setWsPlayer2] = useState<WebSocket | null>(null);
+  const [scores, setScores] = useState({ p1: 0, p2: 0 });
+  const [gameOver, setGameOver] = useState<null | { winner: string; loser: string; score: string }>(null);
 
   const [players, setPlayers] = useState({
     player1: { username: player?.username || "Player 1" },
     player2: { username: "Guest" }
   });
+
+  const handleWsMessage = (event: MessageEvent) => {
+	if (!(event.data instanceof ArrayBuffer)) {
+		console.warn("Unexpected WS message (not ArrayBuffer):", event.data);
+		return;
+	}
+
+	const view = new DataView(event.data);
+	const type = view.getUint8(1);
+	const length = view.getUint16(2, false); // Big endian
+	const bodyOffset = 4;
+
+	if (type === 3) {
+		// STATE UPDATE
+		// Last 2 bytes of body are scores
+		const p1Score = view.getUint8(bodyOffset + length - 2);
+		const p2Score = view.getUint8(bodyOffset + length - 1);
+		setScores({ p1: p1Score, p2: p2Score });
+
+	} else if (type === 2) {
+		// GAME OVER
+		const winnerId = view.getUint8(bodyOffset);
+		const winner =
+		winnerId === 1 ? players.player1.username : players.player2.username;
+		const loser =
+		winnerId === 1 ? players.player2.username : players.player1.username;
+
+		setGameOver({
+		winner,
+		loser,
+		score: `${scores.p1} - ${scores.p2}`,
+		});
+	}
+	};
 
   const startGame = async () => {
     if (!player?.id) {
@@ -47,6 +83,9 @@ export default function Game() {
       if (data.wsUrls && data.wsUrls.length >= 2) {
         const ws1 = new WebSocket(data.wsUrls[0]);
         const ws2 = new WebSocket(data.wsUrls[1]);
+
+		ws1.onmessage = handleWsMessage;
+		ws2.onmessage = handleWsMessage;
 
         const sendStartMessage = (ws: WebSocket) => {
             // This is the command the C server needs to unpause the game.
@@ -116,15 +155,40 @@ export default function Game() {
         </div>
       )}
 
-      <div className="flex-grow flex flex-col items-center justify-center p-4">
-        <h2 className="text-3xl font-press text-[#FFFACD] mb-2 w-full max-w-4xl flex items-center justify-center">
-          <span className="max-w-[40%] text-right truncate">{players.player1.username}</span>
-          <span className="px-6 text-center flex-shrink-0">vs</span>
-          <span className="max-w-[40%] text-left truncate">{players.player2.username}</span>
-        </h2>
+      <div className="flex-grow flex flex-col items-center justify-center p-4 mb-2 text-3xl font-press text-[#FFFACD]">
+
+		{/* Scoreboard */}
+		{!showOverlay && !gameOver && (
+		<div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-[#20201d] text-[#FFFACD] px-6 py-2 rounded-lg font-press text-2xl shadow-lg border border-[#FFFACD]">
+			{players.player1.username} {scores.p1} - {scores.p2} {players.player2.username}
+		</div>
+		)}
+
         {!showOverlay && (
           <GameDisplay wsP1={wsPlayer1} wsP2={wsPlayer2} />
         )}
+
+		{/* Game Over Overlay */}
+		{gameOver && (
+		<div className="absolute inset-0 bg-black bg-opacity-80 z-30 flex flex-col justify-center items-center text-white">
+			<div className="bg-[#55534e] bg-opacity-95 p-8 rounded-xl shadow-lg border border-[#FFFACD] text-center space-y-4">
+			<h2 className="text-3xl font-press text-[#FFFACD]">Game Over</h2>
+			<p className="text-xl font-press">
+				Winner: <span className="text-green-400">{gameOver.winner}</span>
+			</p>
+			<p className="text-lg font-press">
+				Loser: <span className="text-red-400">{gameOver.loser}</span>
+			</p>
+			<p className="text-lg font-press">Final Score: {gameOver.score}</p>
+			<button
+				onClick={() => window.location.reload()}
+				className="font-press mt-4 bg-[#FFFACD] text-[#20201d] px-6 py-3 rounded-lg hover:bg-[#20201d] hover:text-[#FFFACD] border-2 border-transparent hover:border-[#FFFACD] transition"
+			>
+				Play Again
+			</button>
+			</div>
+		</div>
+		)}
       </div>
     </div>
   );

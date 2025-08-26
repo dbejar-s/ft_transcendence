@@ -7,10 +7,38 @@ import util from 'util';
 import { pipeline } from 'stream';
 import bcrypt from 'bcrypt'; // Import bcrypt
 import { jwtMiddleware } from '../jwtMiddleware'; // Import the middleware
+import crypto from 'crypto';
 
 const pump = util.promisify(pipeline);
 
 export async function userRoutes(fastify: FastifyInstance) {
+
+    // Create a temporary user (for tournament participants)
+    fastify.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
+        const { username } = request.body as any;
+
+        if (!username) {
+            return reply.status(400).send({ message: 'Username is required' });
+        }
+
+        try {
+            // Check if user already exists
+            const existingUser = db.prepare('SELECT * FROM users WHERE username = ?').get(username) as any;
+            if (existingUser) {
+                return reply.send({ id: existingUser.id, username: existingUser.username });
+            }
+
+            // Create temporary user
+            const id = crypto.randomUUID();
+            const defaultAvatar = '/uploads/default-avatar.png';
+            const stmt = db.prepare('INSERT INTO users (id, username, avatar, status) VALUES (?, ?, ?, ?)');
+            stmt.run(id, username, defaultAvatar, 'temporary');
+            
+            reply.status(201).send({ id, username });
+        } catch (error: any) {
+            reply.status(500).send({ message: 'Database error', error: error.message });
+        }
+    });
 
     fastify.get('/current', { preHandler: [jwtMiddleware] }, async (request: FastifyRequest, reply: FastifyReply) => {
         if (!request.user) {

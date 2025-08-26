@@ -143,35 +143,67 @@ fastify.get('/api/debug/db', async (_request, reply) => {
   }
 });
 
-fastify.get('/api/debug/friends', async (_request, reply) => {
-  try {
-    const friends = db.prepare('SELECT * FROM friends').all();
-    return reply.send(friends);
-  } catch (err) {
-    fastify.log.error(err);
-    return reply.status(500).send({ error: 'Failed to fetch friends table' });
-  }
-});
 
-fastify.delete('/api/debug/cleanup-friends', async (_request, reply) => {
+fastify.delete('/api/debug/remove-tournament', async (_request, reply) => {
   try {
-    const stmt = db.prepare("DELETE FROM friends WHERE status = 'pending'");
+    const stmt = db.prepare("DELETE FROM tournaments WHERE status = 'ongoing'");
     const result = stmt.run();
     return reply.send({ deleted: result.changes });
   } catch (err) {
     fastify.log.error(err);
-    return reply.status(500).send({ error: 'Failed to clean up friends table' });
+    return reply.status(500).send({ error: 'Failed to clean up tournaments table' });
   }
 });
 
-fastify.delete('/api/debug/remove-friends', async (_request, reply) => {
+fastify.delete('/api/debug/remove-tournois', async (_request, reply) => {
   try {
-    const stmt = db.prepare("DELETE FROM friends WHERE status = 'accepted'");
+    const stmt = db.prepare("DELETE FROM tournaments WHERE status = 'finished'");
     const result = stmt.run();
     return reply.send({ deleted: result.changes });
   } catch (err) {
     fastify.log.error(err);
-    return reply.status(500).send({ error: 'Failed to clean up friends table' });
+    return reply.status(500).send({ error: 'Failed to clean up tournaments table' });
+  }
+});
+
+// Additional debug routes for troubleshooting
+fastify.get('/api/debug/tournaments', async (_request, reply) => {
+  try {
+    const tournaments = db.prepare('SELECT * FROM tournaments').all();
+    return reply.send(tournaments);
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Failed to fetch tournaments' });
+  }
+});
+
+fastify.delete('/api/debug/remove-tournament-force', async (_request, reply) => {
+  try {
+    // First delete related data to avoid foreign key constraints
+    db.prepare('DELETE FROM tournament_matches WHERE tournamentId IN (SELECT id FROM tournaments WHERE status = ?)').run('ongoing');
+    db.prepare('DELETE FROM tournament_participants WHERE tournamentId IN (SELECT id FROM tournaments WHERE status = ?)').run('ongoing');
+    
+    // Then delete the tournaments
+    const stmt = db.prepare("DELETE FROM tournaments WHERE status = 'ongoing'");
+    const result = stmt.run();
+    return reply.send({ deleted: result.changes });
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Failed to clean up tournaments table'});
+  }
+});
+
+fastify.delete('/api/debug/remove-all-tournaments', async (_request, reply) => {
+  try {
+    // Delete all tournament-related data in correct order
+    db.prepare('DELETE FROM tournament_matches').run();
+    db.prepare('DELETE FROM tournament_participants').run();
+    const stmt = db.prepare('DELETE FROM tournaments');
+    const result = stmt.run();
+    return reply.send({ deleted: result.changes });
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Failed to clean up all tournaments'});
   }
 });
 

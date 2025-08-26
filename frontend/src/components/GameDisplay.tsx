@@ -71,11 +71,13 @@ export default function GameDisplay({ wsP1, wsP2 }: GameDisplayProps) {
     
     // We only need to listen for state updates on one connection
     wsP1?.addEventListener("message", handleMessage);
+    wsP2?.addEventListener("message", handleMessage);
     
     return () => {
       wsP1?.removeEventListener("message", handleMessage);
+      wsP2?.removeEventListener("message", handleMessage);
     };
-  }, [wsP1]);
+  }, [wsP1, wsP2]);
 
   useEffect(() => {
     const sendBinaryPaddleMove = (ws: WebSocket | null, direction: number) => {

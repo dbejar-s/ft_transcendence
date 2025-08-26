@@ -87,7 +87,7 @@ export default function UserInfo({ initialUser }: UserInfoProps) {
         languageValue
       )
 
-      const response = await fetch(`/api/users/${userData.id}`, {
+      const response = await fetch(`http://localhost:3001/api/users/${userData.id}`, {
         method: "PUT",
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("token")}`
