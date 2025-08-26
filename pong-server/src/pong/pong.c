@@ -44,7 +44,7 @@ void	*pong(void *arg) {
 }
 
 void	unpause_game(game *game, const u8 player) {
-	debug("Game %hhu: unpause_game called for player %hhu", game->id, player);
+	debug("Game %hhu: Player %hhu unpaused", game->id, player);
 	lock_game(game->state);
 	game->state.pause &= ~player;
 	if (!game->state.pause) {
@@ -67,7 +67,7 @@ void	pause_game(game *game, const u8 player) {
 }
 
 void	move_paddle(game *game, const u8 player, const direction direction) {
-	debug("Game %hhu: move_paddle called for player %hhu, direction=%d (%s)", game->id, player, direction, direction_strings[direction]);
+	debug("Game %hhu: Player %hhu changed paddle direction: %s", game->id, player, direction_strings[direction]);
 	lock_game(game->state);
 	switch (player) {
 		case GAME_PLAYER_1:
@@ -131,30 +131,18 @@ static inline void	_move_paddles(game *game) {
 }
 
 static inline void	_move_ball(game *game) {
-	struct {
-		struct {
-			f32	a;
-			f32	b;
-			f32	c;
-		}	sides;
-		struct {
-			f32	a;
-			f32	b;
-			f32	c;
-		}	angles;
-	}	triangle;
+	f32	angle_rad;
 	f32	dx;
 	f32	dy;
 
 	if (game->state.ball.angle >= 0.1 || game->state.ball.angle <= -0.1) {
-		triangle.angles.c = 90.0f;
-		triangle.angles.b = fabsf(game->state.ball.angle);
-		triangle.angles.a = 90.0f - triangle.angles.b;
-		triangle.sides.c = GAME_BALL_SPEED;
-		triangle.sides.b = triangle.sides.c * (sin(triangle.angles.b) / sin(triangle.angles.c));
-		triangle.sides.a = triangle.sides.c * (sin(triangle.angles.a) / sin(triangle.angles.c));
-		dx = (game->state.ball.direction == LEFT) ? -triangle.sides.a : triangle.sides.a;
-		dy = (game->state.ball.angle < 0.0f) ? -triangle.sides.b : triangle.sides.b;
+		angle_rad = fabsf(game->state.ball.angle) * 3.14 * 2 / 360;
+		dx = cosf(angle_rad) * GAME_BALL_SPEED;
+		dy = sinf(angle_rad) * GAME_BALL_SPEED;
+		if (game->state.ball.direction == LEFT)
+			dx = -dx;
+		if (game->state.ball.angle < 0.0f)
+			dy = -dy;
 	} else {
 		dx = (game->state.ball.direction == LEFT) ? -GAME_BALL_SPEED : GAME_BALL_SPEED;
 		dy = 0;
@@ -183,15 +171,17 @@ static inline void	_hit_ball(game *game, const u8 player) {
 			case GAME_PLAYER_1:
 				game->state.ball.x = GAME_BALL_RADIUS;
 				game->state.ball.direction = RIGHT;
-				game->state.ball.angle = fabsf(game->state.ball.y - paddle_pos) * GAME_BALL_ANGLE_MULTIPLIER + paddle_boost(game->state.p1_paddle);
+				game->state.ball.angle = (game->state.ball.y - paddle_pos) * GAME_BALL_ANGLE_MULTIPLIER + paddle_boost(game->state.p1_paddle);
 				break ;
 			case GAME_PLAYER_2:
 				game->state.ball.x = GAME_FIELD_WIDTH - GAME_BALL_RADIUS;
 				game->state.ball.direction = LEFT;
-				game->state.ball.angle = fabsf(game->state.ball.y - paddle_pos) * GAME_BALL_ANGLE_MULTIPLIER + paddle_boost(game->state.p1_paddle);
+				game->state.ball.angle = (game->state.ball.y - paddle_pos) * GAME_BALL_ANGLE_MULTIPLIER + paddle_boost(game->state.p2_paddle);
 		}
 	} else {
 		game->state.update ^= GAME_UPDATE_SCORE_PENDING;
+		game->state.p1_paddle.pos = GAME_FIELD_HEIGHT / 2;
+		game->state.p2_paddle.pos = GAME_FIELD_HEIGHT / 2;
 		game->state.ball.x = GAME_FIELD_WIDTH / 2;
 		game->state.ball.y = GAME_FIELD_HEIGHT / 2;
 		game->state.ball.angle = 0.0f;
