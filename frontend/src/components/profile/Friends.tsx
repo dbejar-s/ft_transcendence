@@ -31,7 +31,7 @@ export default function Friends({ userId }: Props) {
 
   // Load friends list from backend
   useEffect(() => {
-    fetch(`/api/users/${userId}/friends`)
+    fetch(`http://localhost:3001/api/users/${userId}/friends`)
       .then(res => {
         if (!res.ok) throw new Error("Failed to fetch friends");
         return res.json();
@@ -56,7 +56,7 @@ export default function Friends({ userId }: Props) {
       });
       if (!res.ok) throw new Error("Failed to remove friend");
 
-      const refreshed = await fetch(`http://localhost:3001/api/users/${userId}/friends`);
+     const refreshed = await fetch(`http://localhost:3001/api/users/${userId}/friends`);
       if (!refreshed.ok) throw new Error("Failed to refresh friends list");
       const data: Friend[] = await refreshed.json();
 
@@ -71,7 +71,7 @@ export default function Friends({ userId }: Props) {
   // load friend profile
   const loadFriendProfile = async (friendId: string) => {
     try {
-      const res = await fetch(`/api/users/${userId}/friends/${friendId}/details`);
+      const res = await fetch(`http://localhost:3001/api/friends/${userId}/${friendId}/details`);
       if (!res.ok) throw new Error("Failed to fetch friend details");
       const data: Friend = await res.json();
       setSelectedFriend(data);

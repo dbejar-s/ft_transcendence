@@ -41,7 +41,7 @@ export default async function friendRoutes(fastify: FastifyInstance) {
           SELECT u.id, u.username, u.avatar, u.status
           FROM friends f
           JOIN users u ON u.id = f.friendId
-          WHERE f.userId = ?
+          WHERE f.userId = ? AND f.status = 'accepted'
         `);
 
         const friends = stmt.all(userId) as Friend[];
@@ -60,59 +60,59 @@ export default async function friendRoutes(fastify: FastifyInstance) {
    * - The current user (cannot friend yourself)
    * - Already added friends
    */
-  fastify.get(
-    "/search",
-    async (
-      request: FastifyRequest<{
-        Params: UserIdParams;
-        Querystring: { q?: string };
-      }>,
-      reply: FastifyReply
-    ) => {
-      const { userId } = request.params;
-      const { q = "" } = request.query;
+	fastify.get(
+	"/search",
+	async (
+		request: FastifyRequest<{
+		Params: UserIdParams;
+		Querystring: { q?: string };
+		}>,
+		reply: FastifyReply
+	) => {
+		const { userId } = request.params;
+		const { q = "" } = request.query;
 
-      try {
-        // Get list of already-added friends
-        const excludeStmt = db.prepare(
-          `SELECT friendId FROM friends WHERE userId = ?`
-        );
-        const excludeRows = excludeStmt.all(userId) as { friendId: string }[];
+		try {
+		// Get list of already-added friends
+		const excludeStmt = db.prepare(
+			`SELECT friendId FROM friends WHERE userId = ? AND status = 'accepted'`
+		);
+		const excludeRows = excludeStmt.all(userId) as { friendId: string }[];
 
-        // Collect IDs to exclude (friends + self)
-        const excludeIds = excludeRows.map((r) => r.friendId);
-        excludeIds.push(userId);
+		// Collect IDs to exclude (friends + self)
+		const excludeIds = excludeRows.map((r) => r.friendId);
+		excludeIds.push(userId);
 
-        let users: Friend[];
+		let users: Friend[];
 
-        if (excludeIds.length > 0) {
-          // Exclude friends + self
-          const placeholders = excludeIds.map(() => "?").join(",");
-          const searchStmt = db.prepare(`
-            SELECT id, username, avatar, status
-            FROM users
-            WHERE username LIKE ? AND id NOT IN (${placeholders})
-            LIMIT 10
-          `);
-          users = searchStmt.all(`%${q}%`, ...excludeIds) as Friend[];
-        } else {
-          // User has no friends yet → only exclude self
-          const searchStmt = db.prepare(`
-            SELECT id, username, avatar, status
-            FROM users
-            WHERE username LIKE ?
-            LIMIT 10
-          `);
-          users = searchStmt.all(`%${q}%`) as Friend[];
-        }
+		if (excludeIds.length > 0) {
+			// Exclude friends + self
+			const placeholders = excludeIds.map(() => "?").join(",");
+			const searchStmt = db.prepare(`
+			SELECT id, username, avatar, status
+			FROM users
+			WHERE username LIKE ? AND id NOT IN (${placeholders})
+			LIMIT 10
+			`);
+			users = searchStmt.all(`%${q}%`, ...excludeIds) as Friend[];
+		} else {
+			// User has no friends yet → only exclude self
+			const searchStmt = db.prepare(`
+			SELECT id, username, avatar, status
+			FROM users
+			WHERE username LIKE ? AND id != ?
+			LIMIT 10
+			`);
+			users = searchStmt.all(`%${q}%`, userId) as Friend[];
+		}
 
-        return reply.send(users);
-      } catch (err) {
-        console.error("Error searching friends:", err);
-        return reply.status(500).send({ error: "Failed to search users" });
-      }
-    }
-  );
+		return reply.send(users);
+		} catch (err) {
+		console.error("Error searching friends:", err);
+		return reply.status(500).send({ error: "Failed to search users" });
+		}
+	}
+	);
 
   /**
    * 📌 POST /api/friends/:userId/:friendId
@@ -128,7 +128,7 @@ export default async function friendRoutes(fastify: FastifyInstance) {
 
       try {
         const checkStmt = db.prepare(
-          `SELECT 1 FROM friends WHERE userId = ? AND friendId = ?`
+          `SELECT 1 FROM friends WHERE userId = ? AND friendId = ? AND status = 'accepted'`
         );
         const alreadyExists = checkStmt.get(userId, friendId);
 
@@ -137,7 +137,7 @@ export default async function friendRoutes(fastify: FastifyInstance) {
         }
 
         const stmt = db.prepare(
-          `INSERT INTO friends (userId, friendId) VALUES (?, ?)`
+          `INSERT INTO friends (userId, friendId, status) VALUES (?, ?, 'accepted')`
         );
 
         const tx = db.transaction(() => {
@@ -169,10 +169,10 @@ export default async function friendRoutes(fastify: FastifyInstance) {
 
       try {
         const stmt = db.prepare(
-          `DELETE FROM friends WHERE (userId = ? AND friendId = ?) OR (userId = ? AND friendId = ?)`
-        );
+		`DELETE FROM friends WHERE (userId = ? AND friendId = ?) OR (userId = ? AND friendId = ?)`
+		);
 
-        const result = stmt.run(userId, friendId, friendId, userId);
+		const result = stmt.run(userId, friendId, friendId, userId);
 
         if (result.changes === 0) {
           return reply.status(404).send({ error: "Friendship not found" });
@@ -227,24 +227,4 @@ export default async function friendRoutes(fastify: FastifyInstance) {
     }
   );
 
-  /**
-   * 📌 DEBUG ROUTE
-   * GET /api/friends/:userId/api/debug/db
-   * Returns all users + all friendships.
-   * ⚠️ Only use in development.
-   */
-  fastify.get(
-    "/api/debug/db",
-    async (_request: FastifyRequest, reply: FastifyReply) => {
-      try {
-        const users = db.prepare("SELECT * FROM users").all();
-        const friends = db.prepare("SELECT * FROM friends").all();
-
-        return reply.send({ users, friends });
-      } catch (err) {
-        console.error("Error in debug route:", err);
-        return reply.status(500).send({ error: "Failed to fetch debug info" });
-      }
-    }
-  );
 }

@@ -59,4 +59,79 @@ const start = async () => {
   }
 };
 
+// DEBUG ROUTE - Lists all users and their friends
+fastify.get('/api/debug/db', async (_request, reply) => {
+  try {
+    type User = {
+      id: string;
+      email: string;
+      username: string;
+      password: string;
+      avatar: string | null;
+      googleId: string | null;
+      status: string;
+      language: string;
+      twofa_enabled: number;
+      twofa_code: string | null;
+      twofa_expires: string | null;
+    };
+    type Friend = {
+      userId: string;
+      friendId: string;
+      status: string;
+    };
+
+    const users = db.prepare('SELECT * FROM users').all() as User[];
+    const friends = db.prepare('SELECT * FROM friends').all() as Friend[];
+
+    const friendsMap: Record<string, string[]> = {};
+    for (const f of friends) {
+      if (!friendsMap[f.userId]) friendsMap[f.userId] = [];
+      friendsMap[f.userId].push(f.friendId);
+    }
+
+    const usersWithFriends = users.map(u => ({
+      ...u,
+      friends: friendsMap[u.id] || []
+    }));
+
+    return reply.send(usersWithFriends);
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Failed to fetch debug info' });
+  }
+});
+
+fastify.get('/api/debug/friends', async (_request, reply) => {
+  try {
+    const friends = db.prepare('SELECT * FROM friends').all();
+    return reply.send(friends);
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Failed to fetch friends table' });
+  }
+});
+
+fastify.delete('/api/debug/cleanup-friends', async (_request, reply) => {
+  try {
+    const stmt = db.prepare("DELETE FROM friends WHERE status = 'pending'");
+    const result = stmt.run();
+    return reply.send({ deleted: result.changes });
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Failed to clean up friends table' });
+  }
+});
+
+fastify.delete('/api/debug/remove-friends', async (_request, reply) => {
+  try {
+    const stmt = db.prepare("DELETE FROM friends WHERE status = 'accepted'");
+    const result = stmt.run();
+    return reply.send({ deleted: result.changes });
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: 'Failed to clean up friends table' });
+  }
+});
+
 start();
