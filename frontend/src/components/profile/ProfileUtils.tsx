@@ -83,7 +83,7 @@ export const submitProfile = async (
       formData.append("avatarUrl", avatar)
     }
 
-    const res = await fetch("/api/users/complete-profile", {
+    const res = await fetch("http://localhost:3001/api/users/complete-profile", {
       method: "POST",
       body: formData,
     })

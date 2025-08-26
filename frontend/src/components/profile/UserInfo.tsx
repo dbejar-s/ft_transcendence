@@ -6,16 +6,11 @@ import { Pencil, Upload, Eye, EyeOff } from "lucide-react"
 import { predefinedAvatars } from "./ProfileUtils"
 
 interface UserInfoProps {
-  initialUser: {
-    id: string
-    avatar: string
-    username: string
-    email: string
-    language: string
-  }
+  initialUser: { id: string; avatar: string; username: string; email: string; language: string }
+  onProfileUpdated?: () => void
 }
 
-export default function UserInfo({ initialUser }: UserInfoProps) {
+export default function UserInfo({ initialUser, onProfileUpdated }: UserInfoProps) {
   const { t, i18n } = useTranslation()
   const [userData, setUserData] = useState(initialUser)
   const [avatarFile, setAvatarFile] = useState<string | File>(initialUser.avatar)
@@ -59,6 +54,12 @@ export default function UserInfo({ initialUser }: UserInfoProps) {
   }
 
   const saveField = async (field: "username" | "email" | "language" | "password") => {
+
+	if (!userData || !userData.id) {
+		alert("User not loaded");
+		return;
+	}
+
     const error = validateField(field, 
       field === "username" ? usernameValue :
       field === "email" ? emailValue :
@@ -77,8 +78,10 @@ export default function UserInfo({ initialUser }: UserInfoProps) {
       const formData = new FormData()
       
       if (avatarFile instanceof File) {
-        formData.append("avatar", avatarFile)
-      }
+		formData.append("avatar", avatarFile)
+	  } else if (typeof avatarFile === "string" && !avatarFile.startsWith("/uploads/")) {
+	  	formData.append("predefinedAvatar", avatarFile)
+	  }
       
       formData.append(field, 
         field === "password" ? passwordValue :
@@ -87,7 +90,7 @@ export default function UserInfo({ initialUser }: UserInfoProps) {
         languageValue
       )
 
-      const response = await fetch(`/api/users/${userData.id}`, {
+      const response = await fetch(`http://localhost:3001/api/users/${userData.id}`, {
         method: "PUT",
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("token")}`
@@ -121,7 +124,11 @@ export default function UserInfo({ initialUser }: UserInfoProps) {
         setShowPassword(false)
         setPasswordError("")
       }
+
       setUserData(updatedUser.user);
+
+	  if (onProfileUpdated) onProfileUpdated();
+
     } catch (error) {
       console.error("Update error:", error)
       const errorMsg = error instanceof Error ? error.message : "Update failed"
@@ -133,25 +140,25 @@ export default function UserInfo({ initialUser }: UserInfoProps) {
   }
 
   const cancelEdit = (field: "username" | "email" | "language" | "password") => {
-    if (field === "username") {
-      setIsEditingUsername(false)
-      setUsernameError("")
-      setUsernameValue(userData.username)
-      setAvatarFile(userData.avatar)
-      setAvatarPreview(null)
-    } else if (field === "email") {
-      setIsEditingEmail(false)
-      setEmailError("")
-      setEmailValue(userData.email)
-    } else if (field === "language") {
-      setIsEditingLanguage(false)
-      setLanguageValue(userData.language)
-    } else if (field === "password") {
-      setIsEditingPassword(false)
-      setPasswordError("")
-      setPasswordValue("")
-      setShowPassword(false)
-    }
+	if (field === "username") {
+		setIsEditingUsername(false)
+		setUsernameError("")
+		setUsernameValue(userData.username)
+		setAvatarFile(userData.avatar)
+		setAvatarPreview(null)
+	} else if (field === "email") {
+		setIsEditingEmail(false)
+		setEmailError("")
+		setEmailValue(userData.email)
+	} else if (field === "language") {
+		setIsEditingLanguage(false)
+		setLanguageValue(userData.language)
+	} else if (field === "password") {
+		setIsEditingPassword(false)
+		setPasswordError("")
+		setPasswordValue("")
+		setShowPassword(false)
+	}
   }
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -176,13 +183,22 @@ export default function UserInfo({ initialUser }: UserInfoProps) {
       {/* Avatar + Username */}
       <div className="relative flex flex-col items-center space-y-4">
         <img
-          src={
-            avatarPreview ||
-            (typeof avatarFile === "string" ? avatarFile : avatarFile ? URL.createObjectURL(avatarFile) : "/default-avatar.png")
-          }
-          alt="Avatar"
-          className="w-20 h-20 rounded-full border-2 border-[#FFFACD] object-cover"
-        />
+			src={
+				avatarPreview
+				? avatarPreview
+				: typeof avatarFile === "string"
+					? avatarFile.startsWith("/uploads/")
+					? avatarFile
+					: avatarFile.startsWith("/assets/Profile/")
+						? avatarFile 
+						: require(`../../assets/Profile/${avatarFile}`)
+					: avatarFile
+					? URL.createObjectURL(avatarFile)
+					: "/default-avatar.png"
+			}
+			alt="Avatar"
+			className="w-20 h-20 rounded-full border-2 border-[#FFFACD] object-cover"
+		/>
 
         {isEditingUsername ? (
           <div className="flex flex-col items-center space-y-4 w-full">

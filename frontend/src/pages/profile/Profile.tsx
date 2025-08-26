@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import UserInfo from "../../components/profile/UserInfo";
 import Friends from "../../components/profile/Friends";
@@ -6,6 +6,7 @@ import MatchHistory from "../../components/profile/MatchHistory";
 import Statistics from "../../components/profile/Statistics";
 import { usePlayer } from "../../context/PlayerContext";
 import type { Match } from "../../types/Match"
+import i18n from "../../i18n";
 
 interface Player {
   id: string;
@@ -19,11 +20,25 @@ interface Player {
 export default function Profile() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"user" | "friends" | "matches" | "stats">("user");
-  const { player } = usePlayer() as { player: Player };
+  const { player, setPlayer } = usePlayer() as { player: Player, setPlayer: (p: Player) => void };
 
   if (!player) {
     return <div>{t("loading") || "Loading..."}</div>;
   }
+
+  useEffect(() => {
+    fetch("/api/users/current", {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+    })
+      .then(res => res.json())
+      .then(user => setPlayer(user));
+  }, []);
+
+  useEffect(() => {
+	if (player?.language) {
+		i18n.changeLanguage(player.language)
+	}
+  }, [player?.language])
 
   return (
     <div className="min-h-screen flex flex-col bg-[#2a2a27] text-[#FFFACD] p-4">
@@ -67,14 +82,21 @@ export default function Profile() {
       <div className="bg-[#20201d] rounded-xl p-6 shadow-lg border border-[#FFFACD] border-opacity-20">
         {activeTab === "user" && (
           <UserInfo
-            initialUser={{
-              id: player.id,
-              username: player.username,
-              email: player.email,
-              avatar: player.avatar,
-              language: player.language || 'en'
-            }}
-          />
+			initialUser={{
+				id: player.id,
+				username: player.username,
+				email: player.email,
+				avatar: player.avatar,
+				language: player.language || 'en'
+			}}
+			onProfileUpdated={async () => {
+				const res = await fetch(`/api/users/current?ts=${Date.now()}`, {
+					headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+				});
+				const user = await res.json();
+				setPlayer(user);
+			}}
+		  />
         )}
 
         {activeTab === "friends" && (

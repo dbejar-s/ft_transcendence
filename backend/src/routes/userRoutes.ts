@@ -13,6 +13,7 @@ const pump = util.promisify(pipeline);
 export async function userRoutes(fastify: FastifyInstance) {
 
     fastify.get('/current', { preHandler: [jwtMiddleware] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    	reply.header('Cache-Control', 'no-store');
         if (!request.user) {
         return reply.status(401).send({ message: 'Unauthorized' })
         }
