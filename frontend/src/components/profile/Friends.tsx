@@ -71,13 +71,13 @@ export default function Friends({ userId }: Props) {
   // load friend profile
   const loadFriendProfile = async (friendId: string) => {
     try {
-      const res = await fetch(`http://localhost:3001/api/friends/${userId}/${friendId}/details`);
+      const res = await fetch(`http://localhost:3001/api/users/${userId}/friends/${friendId}/details`);
       if (!res.ok) throw new Error("Failed to fetch friend details");
       const data: Friend = await res.json();
       setSelectedFriend(data);
     } catch (e) {
       console.error(e);
-      alert(t("errorLoadingFriendProfile") || "Error loading friend profile");
+      alert("Error loading friend profile");
     }
   }
 
