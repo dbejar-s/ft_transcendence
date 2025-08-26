@@ -4,6 +4,7 @@ import { Search, UserPlus, UserMinus, Clock } from "lucide-react"
 import type { Friend } from "./FriendProfile"
 import FriendProfile from "./FriendProfile"
 import AddFriendOverlay from "./AddFriend"
+import { useFriendStatus } from "./FriendStatus"
 
 interface Match {
   id: string;
@@ -28,6 +29,8 @@ export default function Friends({ userId }: Props) {
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null)
   const [showOverlay, setShowOverlay] = useState(false)
   const { t } = useTranslation()
+
+  useFriendStatus(userId, setFriends);
 
   // Load friends list from backend
   useEffect(() => {

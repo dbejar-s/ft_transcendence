@@ -61,13 +61,6 @@ export default function FriendProfile({ friend, onClose }: Props) {
             </p>
             <p>{t("gamesPlayed")}: {friend.gamesPlayed || 0}</p>
           </div>
-
-          <button
-            onClick={() => alert(`Start match vs ${friend.username}`)}
-            className="px-3 py-1 bg-[#FFFACD] text-[#20201d] text-base font-press rounded hover:bg-yellow-200 transition-colors whitespace-nowrap"
-          >
-            🎮 {t("startGame")}
-          </button>
         </div>
       </div>
 

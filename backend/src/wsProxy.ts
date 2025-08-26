@@ -3,9 +3,7 @@ import net from 'net';
 
 type WsData = string | Buffer | ArrayBuffer;
 
-/**
- * Envoie les données au client WS en s'assurant que c'est un Buffer
- */
+// Helper to safely send data over WebSocket, handling both Buffer and ArrayBuffer
 function sendWsSafe(wsClient: WebSocket, data: Buffer | ArrayBuffer) {
   if (data instanceof Buffer) {
     wsClient.send(data);
@@ -14,9 +12,7 @@ function sendWsSafe(wsClient: WebSocket, data: Buffer | ArrayBuffer) {
   }
 }
 
-/**
- * Lance un proxy WS -> TCP pour deux joueurs, en liant WS sur wsPortX au TCP pong-server tcpPortX
- */
+// Start a WebSocket to TCP proxy for two players
 export function startWsProxy(
   wsPort1: number,
   wsPort2: number,
