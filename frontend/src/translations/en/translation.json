@@ -19,7 +19,7 @@
     "sorryNotFound": "The resource requested could not be found on this server!",
     "home": "Go to home page",
     "howToPlayTitle": "How to play",
-    "howToPlayText": "Use the arrow keys or ZQSD to move your paddle. Score points to win!",
+    "howToPlayText": "To move your paddle Player: W/S | Guest: P/L. Score 11 points to win!",
     "startGame": "Start the game",
     "registerTitle": "Login / Register",
     "email": "Email address",

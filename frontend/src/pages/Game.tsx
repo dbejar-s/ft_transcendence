@@ -1,8 +1,9 @@
-// frontend/src/pages/Game.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import GameDisplay from "../components/GameDisplay";
 import { usePlayer } from "../context/PlayerContext";
+import { useLocation } from "react-router-dom";
+
 
 interface Player {
   id: string;
@@ -12,6 +13,7 @@ interface Player {
 
 export default function Game() {
   const { t } = useTranslation();
+  const location = useLocation();
   const { player } = usePlayer() as { player: Player };
   const [guestName, setGuestName] = useState("Guest");
   const [showOverlay, setShowOverlay] = useState(true);
@@ -20,44 +22,65 @@ export default function Game() {
   const [scores, setScores] = useState({ p1: 0, p2: 0 });
   const [gameOver, setGameOver] = useState<null | { winner: string; loser: string; score: string }>(null);
 
+  // Check if this is a tournament match
+  const [tournamentMatch, setTournamentMatch] = useState<any>(null);
+
   const [players, setPlayers] = useState({
     player1: { username: player?.username || "Player 1" },
     player2: { username: "Guest" }
   });
 
+  // Check for tournament match data only if coming from tournament navigation
+  useEffect(() => {
+    // Only load tournament data if we came from the tournament page
+    // Check if location.state has tournament match data
+    if (location.state?.tournamentMatch) {
+      const matchData = location.state.tournamentMatch;
+      setTournamentMatch(matchData);
+      setPlayers({
+        player1: { username: matchData.player1 },
+        player2: { username: matchData.player2 }
+      });
+      console.log('Tournament match loaded from navigation:', matchData);
+    }
+    // If no tournament data in navigation state, use normal game mode
+  }, [location.state]);
+
+  // Function to handle score updates from GameDisplay
+  const handleScoreUpdate = (p1Score: number, p2Score: number) => {
+    console.debug(`[PARENT SCORE UPDATE] P1: ${p1Score}, P2: ${p2Score}`);
+	// Invert scores because wsPlayer1 is player 2 and wsPlayer2 is player 1
+    setScores({ p2: p1Score, p1: p2Score });
+  };
+
   const handleWsMessage = (event: MessageEvent) => {
-	if (!(event.data instanceof ArrayBuffer)) {
-		console.warn("Unexpected WS message (not ArrayBuffer):", event.data);
-		return;
-	}
+    if (!(event.data instanceof ArrayBuffer)) return;
 
-	const view = new DataView(event.data);
-	const type = view.getUint8(1);
-	const length = view.getUint16(2, false); // Big endian
-	const bodyOffset = 4;
+    const view = new DataView(event.data);
+    const type = view.getUint8(1);
+    const length = view.getUint16(2, false); // Big endian
+    const bodyOffset = 4;
 
-	if (type === 3) {
-		// STATE UPDATE
-		// Last 2 bytes of body are scores
-		const p1Score = view.getUint8(bodyOffset + length - 2);
-		const p2Score = view.getUint8(bodyOffset + length - 1);
-		setScores({ p1: p1Score, p2: p2Score });
+    console.debug(`[WS MESSAGE] Type: ${type}, Length: ${length}, Total buffer size: ${event.data.byteLength}`);    if (type === 2) {
+      // GAME OVER message
+      const winnerId = view.getUint8(bodyOffset);
+      const winner = winnerId === 1 ? players.player1.username : players.player2.username;
+      const loser = winnerId === 1 ? players.player2.username : players.player1.username;
 
-	} else if (type === 2) {
-		// GAME OVER
-		const winnerId = view.getUint8(bodyOffset);
-		const winner =
-		winnerId === 1 ? players.player1.username : players.player2.username;
-		const loser =
-		winnerId === 1 ? players.player2.username : players.player1.username;
-
-		setGameOver({
-		winner,
-		loser,
-		score: `${scores.p1} - ${scores.p2}`,
-		});
-	}
-	};
+      // Extract final scores from the GAME OVER message
+      // According to MESSAGE-FORMAT.md v1: P --- F --- 2 x S
+      const finalP1Score = view.getUint8(bodyOffset + 2);
+      const finalP2Score = view.getUint8(bodyOffset + 3);
+      
+      console.debug(`[GAME OVER] Winner: ${winnerId}, Final scores P1: ${finalP1Score}, P2: ${finalP2Score}`);
+      
+      setGameOver({
+        winner,
+        loser,
+        score: winnerId === 1 ? `${finalP2Score} - ${finalP1Score}` : `${finalP1Score} - ${finalP2Score}`,
+      });
+    }
+  };
 
   const startGame = async () => {
     if (!player?.id) {
@@ -66,7 +89,11 @@ export default function Game() {
       return;
     }
     setShowOverlay(false);
-    setPlayers(prev => ({ ...prev, player2: { username: guestName } }));
+    
+    // Only update player2 name if this is NOT a tournament match
+    if (!tournamentMatch) {
+      setPlayers(prev => ({ ...prev, player2: { username: guestName } }));
+    }
 
     try {
       const backendUrl = 'http://localhost:3001';
@@ -84,8 +111,31 @@ export default function Game() {
         const ws1 = new WebSocket(data.wsUrls[0]);
         const ws2 = new WebSocket(data.wsUrls[1]);
 
-		ws1.onmessage = handleWsMessage;
-		ws2.onmessage = handleWsMessage;
+        ws1.onmessage = handleWsMessage;
+        ws2.onmessage = handleWsMessage;
+
+        // Send QUIT message when leaving the page
+        const handleBeforeUnload = () => {
+          const sendQuitMessage = (ws: WebSocket) => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+              const buffer = new ArrayBuffer(4);
+              const view = new DataView(buffer);
+              const PROTOCOL_VERSION = 0;
+              const MESSAGE_TYPE_QUIT = 3;
+              const bodyLength = 0;
+
+              view.setUint8(0, PROTOCOL_VERSION);
+              view.setUint8(1, MESSAGE_TYPE_QUIT);
+              view.setUint16(2, bodyLength, false); // Big Endian
+              ws.send(buffer);
+            }
+          };
+          
+          sendQuitMessage(ws1);
+          sendQuitMessage(ws2);
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
 
         const sendStartMessage = (ws: WebSocket) => {
             // This is the command the C server needs to unpause the game.
@@ -122,10 +172,33 @@ export default function Game() {
     }
   };
 
+	useEffect(() => {
+	return () => {
+		// Cette fonction s'exécute à chaque changement de route
+		if (wsPlayer1) {
+		const buffer = new ArrayBuffer(4);
+		const view = new DataView(buffer);
+		view.setUint8(0, 0);
+		view.setUint8(1, 3); // QUIT
+		view.setUint16(2, 0, false);
+		wsPlayer1.send(buffer);
+		wsPlayer1.close();
+		}
+		if (wsPlayer2) {
+		const buffer = new ArrayBuffer(4);
+		const view = new DataView(buffer);
+		view.setUint8(0, 0);
+		view.setUint8(1, 3); // QUIT
+		view.setUint16(2, 0, false);
+		wsPlayer2.send(buffer);
+		wsPlayer2.close();
+		}
+	};
+	}, [location]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#2a2a27] relative overflow-hidden">
-      {showOverlay && (
+    <div className="min-h-screen flex flex-col bg-[#2a2a27] relative overflow-hidden">      {showOverlay && (
+        // Initial Overlay with instructions and guest name input
         <div className="absolute inset-0 bg-black bg-opacity-70 z-20 flex flex-col justify-center items-center p-8 text-white text-center">
           <div className="max-w-xl bg-[#55534e] bg-opacity-90 p-6 rounded-xl shadow-lg space-y-4 border border-[#FFFACD]">
             <h2 className="text-2xl font-press text-[#FFFACD]">
@@ -133,17 +206,29 @@ export default function Game() {
             </h2>
             <p className="text-base font-press">
               {t("howToPlayText") ||
-                "Player 1: W/S Keys | Player 2: Arrow Keys"}
+                "Player 1: W/S Keys | Player 2: P/L Keys"}
             </p>
 
-            <h2 className="text-2xl font-press text-[#FFFACD]">{"Guest name"}</h2>
-            <input
-              type="text"
-              placeholder={"Guest name"}
-              value={guestName}
-              onChange={(e) => setGuestName(e.target.value)}
-              className="w-full px-4 py-2 font-press rounded-lg text-[#20201d] border border-[#FFFACD]"
-            />
+            {/* Show tournament match info or guest name input */}
+            {tournamentMatch ? (
+              <div className="space-y-2">
+                <h3 className="text-xl font-press text-[#FFFACD]">Tournament Match</h3>
+                <p className="text-lg font-press text-yellow-400">
+                  {tournamentMatch.player1} vs {tournamentMatch.player2}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <h2 className="text-2xl font-press text-[#FFFACD]">Guest name</h2>
+                <input
+                  type="text"
+                  placeholder="Guest name"
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
+                  className="w-full px-4 py-2 font-press rounded-lg text-[#20201d] border border-[#FFFACD]"
+                />
+              </div>
+            )}
 
             <button
               onClick={startGame}
@@ -159,13 +244,13 @@ export default function Game() {
 
 		{/* Scoreboard */}
 		{!showOverlay && !gameOver && (
-		<div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-[#20201d] text-[#FFFACD] px-6 py-2 rounded-lg font-press text-2xl shadow-lg border border-[#FFFACD]">
+		<div className="absolute top-60 left-1/2 transform -translate-x-1/2 bg-[#20201d] text-[#FFFACD] px-6 py-2 rounded-lg font-press text-2xl shadow-lg border border-[#FFFACD]">
 			{players.player1.username} {scores.p1} - {scores.p2} {players.player2.username}
 		</div>
 		)}
 
         {!showOverlay && (
-          <GameDisplay wsP1={wsPlayer1} wsP2={wsPlayer2} />
+          <GameDisplay wsP1={wsPlayer1} wsP2={wsPlayer2} onScoreUpdate={handleScoreUpdate} />
         )}
 
 		{/* Game Over Overlay */}
@@ -179,7 +264,7 @@ export default function Game() {
 			<p className="text-lg font-press">
 				Loser: <span className="text-red-400">{gameOver.loser}</span>
 			</p>
-			<p className="text-lg font-press">Final Score: {gameOver.score}</p>
+			<p className="text-lg font-press">Final Score:  {gameOver.score}</p>
 			<button
 				onClick={() => window.location.reload()}
 				className="font-press mt-4 bg-[#FFFACD] text-[#20201d] px-6 py-3 rounded-lg hover:bg-[#20201d] hover:text-[#FFFACD] border-2 border-transparent hover:border-[#FFFACD] transition"

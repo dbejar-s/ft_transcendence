@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface Match {
   id: number;
@@ -39,6 +40,7 @@ interface TournamentBracketProps {
 }
 
 export default function TournamentBracket({ tournamentId, onClose }: TournamentBracketProps) {
+  const navigate = useNavigate();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [participants, setParticipants] = useState<any[]>([]); // Add participants state
   const [standings, setStandings] = useState<Standing[]>([]);
@@ -91,8 +93,8 @@ export default function TournamentBracket({ tournamentId, onClose }: TournamentB
       phase: match.phase
     };
 
-    localStorage.setItem('currentMatch', JSON.stringify(matchData));
-    window.location.href = '/game';
+    // Navigate to game with tournament match data
+    navigate('/game', { state: { tournamentMatch: matchData } });
   };
 
   const submitResult = async (matchId: number) => {
