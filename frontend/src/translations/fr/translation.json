@@ -19,7 +19,7 @@
     "sorryNotFound": "La ressource demandée n'a pas pu être trouvée sur ce serveur !",
     "home": "Aller à la page d'accueil",
     "howToPlayTitle": "Comment jouer",
-    "howToPlayText": "Utilisez les touches fléchées ou ZQSD pour déplacer votre raquette. Marquez des points pour gagner !",
+    "howToPlayText": "Pour déplacer votre raquette Joueur: W/S | Invité: P/L. Marquez 11 points pour gagner !",
     "startGame": "Commencer le jeu",
     "registerTitle": "Connexion / Inscription",
     "email": "Adresse e-mail",

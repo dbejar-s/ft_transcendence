@@ -1,4 +1,3 @@
-// src/components/GameDisplay.tsx
 import { useEffect, useState } from "react";
 
 type GameDisplayProps = {
@@ -71,11 +70,13 @@ export default function GameDisplay({ wsP1, wsP2 }: GameDisplayProps) {
     
     // We only need to listen for state updates on one connection
     wsP1?.addEventListener("message", handleMessage);
+    wsP2?.addEventListener("message", handleMessage);
     
     return () => {
       wsP1?.removeEventListener("message", handleMessage);
+      wsP2?.removeEventListener("message", handleMessage);
     };
-  }, [wsP1]);
+  }, [wsP1, wsP2]);
 
   useEffect(() => {
     const sendBinaryPaddleMove = (ws: WebSocket | null, direction: number) => {
@@ -137,12 +138,24 @@ export default function GameDisplay({ wsP1, wsP2 }: GameDisplayProps) {
     };
   }, [wsP1, wsP2]);
 
+
   return (
     <svg
       width={FIELD_WIDTH}
       height={FIELD_HEIGHT}
-      style={{ background: "#20201d", border: "2px solid #FFFACD" }}
+      className="bg-[#20201d] border-2 border-[#FFFACD] rounded-xl"
     >
+      {/* Center dashed line */}
+      <line
+        x1={FIELD_WIDTH / 2}
+        y1={0}
+        x2={FIELD_WIDTH / 2}
+        y2={FIELD_HEIGHT}
+        stroke="#FFFACD"
+        strokeWidth="3"
+        strokeDasharray="10,10"
+        opacity="0.6"
+      />
       {/* Paddle 1 */}
       <rect
         x={10}

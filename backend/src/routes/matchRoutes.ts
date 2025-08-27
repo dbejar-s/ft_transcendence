@@ -1,4 +1,3 @@
-// backend/src/routes/matchRoutes.ts
 import { FastifyInstance } from 'fastify';
 import net from 'net';
 import { startWsProxy } from '../wsProxy';
@@ -11,6 +10,10 @@ export async function matchRoutes(fastify: FastifyInstance) {
   fastify.post('/start', async (request, reply) => {
     return new Promise((resolve, reject) => {
       const client = new net.Socket();
+      let resolved = false;
+
+      // Set timeout for the connection
+      client.setTimeout(10000); // 10 seconds timeout
 
       client.connect(4000, 'pong-server', () => {
         console.log('Backend connected to pong-server to request a new game.');
@@ -24,6 +27,8 @@ export async function matchRoutes(fastify: FastifyInstance) {
       });
 
       client.on('data', (data: Buffer) => {
+        if (resolved) return;
+        
         // The C server responds with a GAME_INIT message.
         // Header: 1 byte version, 1 byte type, 2 bytes length.
         // Body: 2 bytes p1_port, 2 bytes p2_port. Total message size is 8 bytes.
@@ -36,6 +41,7 @@ export async function matchRoutes(fastify: FastifyInstance) {
           console.log(`Received ports from pong-server: P1=${player1TcpPort}, P2=${player2TcpPort}`);
 
           client.destroy();
+          resolved = true;
 
           const gameId = gameIdCounter++;
           const wsPort1 = 4001 + (gameId * 2);
@@ -53,18 +59,40 @@ export async function matchRoutes(fastify: FastifyInstance) {
         } else {
           console.error('Received malformed or unexpected message from pong-server.');
           client.destroy();
-          reject(new Error('Malformed response from game server'));
+          if (!resolved) {
+            resolved = true;
+            reject(new Error('Malformed response from game server'));
+          }
+        }
+      });
+
+      client.on('timeout', () => {
+        console.error('Timeout connecting to pong-server');
+        client.destroy();
+        if (!resolved) {
+          resolved = true;
+          reply.status(504).send({ error: 'Game server timeout' });
+          reject(new Error('Game server timeout'));
         }
       });
 
       client.on('error', (err) => {
         console.error('Backend error connecting to pong-server:', err);
-        reply.status(500).send({ error: 'Cannot connect to the game server' });
-        reject(err);
+        client.destroy();
+        if (!resolved) {
+          resolved = true;
+          reply.status(500).send({ error: 'Cannot connect to the game server' });
+          reject(err);
+        }
       });
 
       client.on('close', () => {
         console.log('Initial connection to pong-server closed.');
+        if (!resolved) {
+          resolved = true;
+          reply.status(500).send({ error: 'Game server connection closed unexpectedly' });
+          reject(new Error('Game server connection closed'));
+        }
       });
     });
   });
