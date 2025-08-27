@@ -49,6 +49,19 @@ export function startWsProxy(
       console.error(`Pong socket error (${player}):`, err);
       wsClient.close();
     });
+
+	pongSocket.on('error', (err) => {
+		const code = (err as NodeJS.ErrnoException).code;
+		if (code === 'ECONNRESET' || code === 'EPIPE') {
+			// Fermeture normale par le serveur → log seulement
+			console.log(`Pong socket closed by server (${player})`);
+		} else {
+			// Autres erreurs inattendues
+			console.error(`Unexpected Pong socket error (${player}):`, err);
+		}
+		wsClient.close();
+	});
+
   };
 
   wss1.on('connection', (ws) => setupProxy(ws, tcpPort1, 'player 1'));

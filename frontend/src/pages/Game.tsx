@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import GameDisplay from "../components/GameDisplay";
 import { usePlayer } from "../context/PlayerContext";
+import { useLocation } from "react-router-dom";
+
 
 interface Player {
   id: string;
@@ -11,6 +13,7 @@ interface Player {
 
 export default function Game() {
   const { t } = useTranslation();
+  const location = useLocation();
   const { player } = usePlayer() as { player: Player };
   const [guestName, setGuestName] = useState("Guest");
   const [showOverlay, setShowOverlay] = useState(true);
@@ -27,14 +30,12 @@ export default function Game() {
   // Function to handle score updates from GameDisplay
   const handleScoreUpdate = (p1Score: number, p2Score: number) => {
     console.debug(`[PARENT SCORE UPDATE] P1: ${p1Score}, P2: ${p2Score}`);
+	// Invert scores because wsPlayer1 is player 2 and wsPlayer2 is player 1
     setScores({ p2: p1Score, p1: p2Score });
   };
 
   const handleWsMessage = (event: MessageEvent) => {
-    if (!(event.data instanceof ArrayBuffer)) {
-      console.warn("Unexpected WS message (not ArrayBuffer):", event.data);
-      return;
-    }
+    if (!(event.data instanceof ArrayBuffer)) return;
 
     const view = new DataView(event.data);
     const type = view.getUint8(1);
@@ -148,6 +149,29 @@ export default function Game() {
     }
   };
 
+	useEffect(() => {
+	return () => {
+		// Cette fonction s'exécute à chaque changement de route
+		if (wsPlayer1) {
+		const buffer = new ArrayBuffer(4);
+		const view = new DataView(buffer);
+		view.setUint8(0, 0);
+		view.setUint8(1, 3); // QUIT
+		view.setUint16(2, 0, false);
+		wsPlayer1.send(buffer);
+		wsPlayer1.close();
+		}
+		if (wsPlayer2) {
+		const buffer = new ArrayBuffer(4);
+		const view = new DataView(buffer);
+		view.setUint8(0, 0);
+		view.setUint8(1, 3); // QUIT
+		view.setUint16(2, 0, false);
+		wsPlayer2.send(buffer);
+		wsPlayer2.close();
+		}
+	};
+	}, [location]);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#2a2a27] relative overflow-hidden">
@@ -185,7 +209,7 @@ export default function Game() {
 
 		{/* Scoreboard */}
 		{!showOverlay && !gameOver && (
-		<div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-[#20201d] text-[#FFFACD] px-6 py-2 rounded-lg font-press text-2xl shadow-lg border border-[#FFFACD]">
+		<div className="absolute top-60 left-1/2 transform -translate-x-1/2 bg-[#20201d] text-[#FFFACD] px-6 py-2 rounded-lg font-press text-2xl shadow-lg border border-[#FFFACD]">
 			{players.player1.username} {scores.p1} - {scores.p2} {players.player2.username}
 		</div>
 		)}
