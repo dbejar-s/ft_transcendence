@@ -45,10 +45,6 @@ export function startWsProxy(
 
     wsClient.on('close', () => pongSocket.end());
     pongSocket.on('close', () => wsClient.close());
-    pongSocket.on('error', (err) => {
-      console.error(`Pong socket error (${player}):`, err);
-      wsClient.close();
-    });
 
 	pongSocket.on('error', (err) => {
 		const code = (err as NodeJS.ErrnoException).code;
