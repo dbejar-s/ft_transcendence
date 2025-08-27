@@ -24,7 +24,7 @@ export default function TournamentList({ refreshKey = 0 }: { refreshKey?: number
   const [tournaments, setTournaments] = useState<Tournament[]>([])
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null)
   const [results, setResults] = useState<Result[]>([])
-  const [loadingResults, setLoadingResults] = useState(false)
+  const [loadingResults] = useState(false)
   const [showResultsModal, setShowResultsModal] = useState(false)
   const [participantsByTournament, setParticipantsByTournament] = useState<Record<number, any[]>>({})
   const [showBracket, setShowBracket] = useState(false)
@@ -72,24 +72,6 @@ export default function TournamentList({ refreshKey = 0 }: { refreshKey?: number
   useEffect(() => {
     fetchTournaments();
   }, [refreshKey]);
-
-  // Load participants for selected tournament
-  const handleViewResults = async (tournament: Tournament) => {
-    setSelectedTournament(tournament)
-    setShowResultsModal(true)
-    setLoadingResults(true)
-
-    try {
-      const res = await fetch(`http://localhost:3001/api/tournaments/${tournament.id}/results`)
-      const data = await res.json()
-      setResults(data.sort((a: Result, b: Result) => b.score - a.score))
-    } catch (err) {
-      console.error(err)
-      setResults([])
-    } finally {
-      setLoadingResults(false)
-    }
-  }
 
   // Delete tournament
   const deleteTournament = async (tournamentId: number) => {
@@ -162,20 +144,22 @@ export default function TournamentList({ refreshKey = 0 }: { refreshKey?: number
               </div>
 
               <div className="flex gap-4">
-                {/* Boutons pour tous les statuts */}
-                <button
-                  onClick={() => handleViewBracket(tournament.id)}
-                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors font-semibold"
-                >
-                  {translate("viewBracket") || "View Bracket"}
-                </button>
-
-                {tournament.status === "finished" && (
+                {/* Buttons for all statuses */}
+                {tournament.status === "finished" ? (
+                  // For finished tournaments: View Results in white
                   <button
-                    onClick={() => handleViewResults(tournament)}
+                    onClick={() => handleViewBracket(tournament.id)}
                     className="bg-[#FFFACD] text-[#20201d] px-4 py-2 rounded hover:bg-opacity-90 transition-colors font-semibold"
                   >
                     {translate("viewResults") || "View Results"}
+                  </button>
+                ) : (
+                  // For ongoing or registration tournaments: View Bracket in blue
+                  <button
+                    onClick={() => handleViewBracket(tournament.id)}
+                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors font-semibold"
+                  >
+                    {translate("viewBracket") || "View Bracket"}
                   </button>
                 )}
 

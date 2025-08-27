@@ -40,6 +40,7 @@ interface TournamentBracketProps {
 
 export default function TournamentBracket({ tournamentId, onClose }: TournamentBracketProps) {
   const [tournament, setTournament] = useState<Tournament | null>(null);
+  const [participants, setParticipants] = useState<any[]>([]); // Add participants state
   const [standings, setStandings] = useState<Standing[]>([]);
   const [currentMatches, setCurrentMatches] = useState<Match[]>([]);
   const [currentRound, setCurrentRound] = useState<number>(1);
@@ -54,6 +55,7 @@ export default function TournamentBracket({ tournamentId, onClose }: TournamentB
       const data = await response.json();
       
       setTournament(data.tournament);
+      setParticipants(data.participants || []); // Set participants from server
       setStandings(data.standings || []);
       setCurrentMatches(data.currentMatches || []);
       setCurrentRound(data.currentRound || 1);
@@ -67,6 +69,7 @@ export default function TournamentBracket({ tournamentId, onClose }: TournamentB
       }
       
       console.log('Bracket data received:', data);
+      console.log('Participants:', data.participants); // Debug log
     } catch (error) {
       console.error('Error fetching bracket data:', error);
     } finally {
@@ -147,24 +150,40 @@ export default function TournamentBracket({ tournamentId, onClose }: TournamentB
   const getPhaseDisplayName = (phase: string) => {
     switch (phase) {
       case 'round_1': return '🥊 Round 1';
+      case 'semifinal': return '🥇 Semifinal';
+      case 'final': return '🏆 Final';
       case 'winners_bracket': return '🏆 Winners Bracket';
       case 'losers_bracket': return '💔 Losers Bracket';
       case 'crossover_match': return '⚔️ Crossover Match';
       case 'final_bracket': return '🏁 Finals';
-      default: return phase;
+      // Support for points-based phases
+      default: {
+        if (phase.startsWith('points_')) {
+          const points = phase.split('_')[1];
+          return `⚖️ ${points} Points Bracket`;
+        }
+        return phase;
+      }
     }
   };
 
   const renderMatch = (match: Match) => {
-    // Couleur selon la phase
     const getPhaseColor = (phase: string) => {
       switch (phase) {
         case 'round_1': return 'border-blue-500';
+        case 'semifinal': return 'border-purple-500';
+        case 'final': return 'border-yellow-500';
         case 'winners_bracket': return 'border-green-500';
         case 'losers_bracket': return 'border-red-500';
         case 'crossover_match': return 'border-purple-500';
         case 'final_bracket': return 'border-yellow-500';
-        default: return 'border-gray-500';
+        default: {
+          // Color for points-based phases
+          if (phase.startsWith('points_')) {
+            return 'border-orange-500';
+          }
+          return 'border-gray-500';
+        }
       }
     };
 
@@ -190,6 +209,7 @@ export default function TournamentBracket({ tournamentId, onClose }: TournamentB
                 match.phase === 'winners_bracket' ? 'bg-green-700 text-white' :
                 match.phase === 'losers_bracket' ? 'bg-red-700 text-white' :
                 match.phase === 'crossover_match' ? 'bg-purple-700 text-white' :
+                match.phase.startsWith('points_') ? 'bg-orange-700 text-white' :
                 'bg-blue-700 text-white'
               }`}>
                 {getPhaseDisplayName(match.phase)}
@@ -318,6 +338,34 @@ export default function TournamentBracket({ tournamentId, onClose }: TournamentB
     </div>
   );
 
+    const renderParticipants = () => (
+    <div className="bg-[#1a1a17] rounded-lg p-6">
+      <h3 className="text-2xl font-bold mb-4 text-center text-blue-400">
+        👥 Tournament Participants ({participants.length})
+      </h3>
+      
+      {participants.length === 0 ? (
+        <div className="text-center text-gray-400">
+          <p>No participants found</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {participants.map((participant, index) => (
+            <div 
+              key={participant.id || index}
+              className="bg-[#2a2a27] rounded-lg p-3 text-center border border-gray-600 hover:border-blue-500 transition-colors"
+            >
+              <div className="text-lg font-semibold text-[#FFFACD]">
+                {participant.username}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50">
@@ -359,6 +407,11 @@ export default function TournamentBracket({ tournamentId, onClose }: TournamentB
               </p>
             )}
           </div>
+
+          {/* Participants Section - Affichage simplifié */}
+          {renderParticipants()}
+
+          {/* Supprimer la section debug temporaire */}
 
           {/* Final Standings - Show first for finished tournaments */}
           {tournament?.status === 'finished' && standings.length > 0 && (

@@ -26,13 +26,102 @@ export default function TournamentPage() {
     });
   };
 
-  // Update a participant's name (these are temporary users)
-  const handleParticipantNameChange = (i: number, value: string) => {
-    setParticipantNames((prev) => {
-      const arr = [...prev];
-      arr[i] = value;
-      return arr;
+  // Update a participant's name
+  const handleParticipantNameChange = (index: number, value: string) => {
+    setParticipantNames(prev => {
+      const updated = [...prev];
+      updated[index] = value;
+      return updated;
     });
+  };
+
+  const createTournamentMatches = async (tournamentId: number, token: string) => {
+    try {
+      console.log('Creating matches for tournament:', tournamentId);
+      
+      // Récupérer tous les participants
+      const participantsRes = await fetch(`http://localhost:3001/api/tournaments/${tournamentId}/participants`);
+      const participants = await participantsRes.json();
+      
+      console.log('Participants for matches:', participants);
+      
+      if (participants.length < 2) {
+        console.error('Not enough participants to create matches');
+        return;
+      }
+
+      // Pour 3 joueurs: Round 1 avec 2 matches seulement 
+      // P1 vs P2, P1 vs P3 (P1 joue 2 fois, P2 et P3 jouent 1 fois chacun)
+      if (participants.length === 3) {
+        const matches = [
+          { p1: participants[0], p2: participants[1] }, // P1 vs P2
+          { p1: participants[0], p2: participants[2] }  // P1 vs P3
+        ];
+        
+        for (const match of matches) {
+          await createSingleMatch(tournamentId, token, match.p1, match.p2, 1, 'round_1');
+        }
+        console.log(`Created ${matches.length} matches for 3-player tournament`);
+        return;
+      }
+      
+      // Pour 4 joueurs: Round 1 avec 2 matches
+      // P1 vs P2, P3 vs P4
+      if (participants.length === 4) {
+        const matches = [
+          { p1: participants[0], p2: participants[1] }, // P1 vs P2
+          { p1: participants[2], p2: participants[3] }  // P3 vs P4
+        ];
+        
+        for (const match of matches) {
+          await createSingleMatch(tournamentId, token, match.p1, match.p2, 1, 'round_1');
+        }
+        console.log(`Created ${matches.length} matches for 4-player tournament`);
+        return;
+      }
+
+      // Pour 5+ joueurs: système existant (tous contre tous pour le round 1)
+      const matchesCreated = [];
+      for (let i = 0; i < participants.length; i++) {
+        for (let j = i + 1; j < participants.length; j++) {
+          await createSingleMatch(tournamentId, token, participants[i], participants[j], 1, 'round_1');
+          matchesCreated.push({ p1: participants[i], p2: participants[j] });
+        }
+      }
+      console.log(`Created ${matchesCreated.length} matches for ${participants.length}-player tournament`);
+      
+    } catch (error) {
+      console.error('Error creating tournament matches:', error);
+    }
+  };
+
+  // Fonction helper pour créer un match
+  const createSingleMatch = async (tournamentId: number, token: string, player1: any, player2: any, round: number, phase: string) => {
+    const matchData = {
+      tournamentId: tournamentId,
+      player1Id: player1.id,
+      player2Id: player2.id,
+      round: round,
+      phase: phase,
+      status: 'pending'
+    };
+    
+    console.log('Creating match:', player1.username, 'vs', player2.username);
+    
+    const createMatchRes = await fetch(`http://localhost:3001/api/tournaments/${tournamentId}/create-match`, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify(matchData)
+    });
+    
+    if (createMatchRes.ok) {
+      console.log('✅ Match created successfully');
+    } else {
+      console.error('❌ Failed to create match');
+    }
   };
 
   // Create tournament
@@ -77,7 +166,7 @@ export default function TournamentPage() {
         body: JSON.stringify({
           name: newTournamentName,
           gameMode: "pong",
-          status: "ongoing", // Directement en mode 'ongoing'
+          status: "ongoing",
           maxPlayers: numParticipants,
         }),
       });
@@ -93,42 +182,55 @@ export default function TournamentPage() {
       const { tournamentId } = await res.json();
       console.log('Tournament created with ID:', tournamentId);
 
-      // Add other participants as TEMPORARY users
+      // Add other participants - check if they exist first
       for (const name of participantNames) {
-        console.log('Creating temporary user:', name);
+        console.log('Processing participant:', name);
         
-        // Create a temporary user for each participant
-        const userRes = await fetch("http://localhost:3001/api/users", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            username: name,
-            isTemporary: true
-          }),
-        });
+        let userId;
         
-        if (!userRes.ok) {
-          console.error('Failed to create temporary user:', name);
-          continue;
+        // Try to find existing user first
+        const existingUserRes = await fetch(`http://localhost:3001/api/users/by-username/${name}`);
+        
+        if (existingUserRes.ok) {
+          // User exists, use their ID
+          const existingUser = await existingUserRes.json();
+          userId = existingUser.id;
+          console.log('Found existing user:', existingUser.username, 'ID:', userId);
+        } else {
+          // User doesn't exist, create a new regular user (not temporary)
+          const userRes = await fetch("http://localhost:3001/api/users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+              username: name,
+              isTemporary: false // Regular user, not temporary
+            }),
+          });
+          
+          if (!userRes.ok) {
+            console.error('Failed to create user:', name);
+            continue;
+          }
+          
+          const user = await userRes.json();
+          userId = user.id;
+          console.log('Created new user:', user.username, 'ID:', userId);
         }
         
-        const user = await userRes.json();
-        console.log('Created temporary user:', user);
-        
-        // Register the temporary user in the tournament
+        // Register the user in the tournament
         const registerRes = await fetch(`http://localhost:3001/api/tournaments/${tournamentId}/register`, {
           method: "POST",
           headers: { 
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`
           },
-          body: JSON.stringify({ userId: user.id }),
+          body: JSON.stringify({ userId: userId }),
         });
         
         if (!registerRes.ok) {
-          console.error('Failed to register temporary user:', name);
+          console.error('Failed to register user:', name);
         } else {
-          console.log('Registered temporary user:', name, 'in tournament');
+          console.log('Registered user:', name, 'in tournament');
         }
       }
 
@@ -150,63 +252,6 @@ export default function TournamentPage() {
       } else {
         alert("Error creating tournament");
       }
-    }
-  };
-
-  // Nouvelle fonction pour créer les matches automatiquement
-  const createTournamentMatches = async (tournamentId: number, token: string) => {
-    try {
-      console.log('Creating matches for tournament:', tournamentId);
-      
-      // Récupérer tous les participants
-      const participantsRes = await fetch(`http://localhost:3001/api/tournaments/${tournamentId}/participants`);
-      const participants = await participantsRes.json();
-      
-      console.log('Participants for matches:', participants);
-      
-      if (participants.length < 2) {
-        console.error('Not enough participants to create matches');
-        return;
-      }
-
-      // Créer tous les matches (Round 1: tout le monde contre tout le monde)
-      const matchesCreated = [];
-      for (let i = 0; i < participants.length; i++) {
-        for (let j = i + 1; j < participants.length; j++) {
-          const matchData = {
-            tournamentId: tournamentId,
-            player1Id: participants[i].id,
-            player2Id: participants[j].id,
-            round: 1,
-            phase: 'round_1',
-            status: 'pending'
-          };
-          
-          console.log('Creating match:', participants[i].username, 'vs', participants[j].username);
-          
-          // Créer le match via l'API
-          const createMatchRes = await fetch(`http://localhost:3001/api/tournaments/${tournamentId}/create-match`, {
-            method: "POST",
-            headers: { 
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`
-            },
-            body: JSON.stringify(matchData)
-          });
-          
-          if (createMatchRes.ok) {
-            matchesCreated.push(matchData);
-            console.log('✅ Match created successfully');
-          } else {
-            console.error('❌ Failed to create match');
-          }
-        }
-      }
-      
-      console.log(`Created ${matchesCreated.length} matches for tournament ${tournamentId}`);
-      
-    } catch (error) {
-      console.error('Error creating tournament matches:', error);
     }
   };
 
@@ -263,27 +308,21 @@ export default function TournamentPage() {
               />
             </label>
             
-            {/* Show current logged-in user as Creator (non-editable) */}
-            <div className="p-3 bg-blue-900 rounded">
-              <label className="text-blue-200">
-                {translate("creator") || "Creator"} ({translate("you") || "You"})
-                <input
-                  className="block w-full mt-1 p-2 rounded text-[#20201d] bg-blue-200 font-bold"
-                  value={`${player?.username} (Your Account)`}
-                  disabled
-                  readOnly
-                />
-              </label>
-              <small className="text-blue-300">
-                ℹ️ Your tournament results will be saved to your account statistics
-              </small>
-            </div>
             
-            {/* Other participants - these will be temporary users */}
-            <div className="border-t border-gray-600 pt-3">
-              <h4 className="text-sm text-gray-300 mb-2">
-                {translate("otherParticipants") || "Other Participants"} (Temporary Users)
-              </h4>
+            
+            {/* Other participants - these will be regular users */}
+            <div className="border-t border-gray-600 pt-3">{/* Show current logged-in user as Creator (non-editable) */}
+			  <div className="p-3 bg-blue-900 rounded">
+				<label className="text-blue-200">
+					{translate("creator") || "Creator"} ({translate("you") || "You"})
+					<input
+					className="block w-full mt-1 p-2 rounded text-[#20201d] bg-blue-200 font-bold"
+					value={`${player?.username}`}
+					disabled
+					readOnly
+					/>
+				</label>
+			  </div>
               {participantNames.map((name: string, i: number) => (
                 <label key={i} className="block mb-2">
                   {translate("participant") || "Participant"} {i + 2}
@@ -291,14 +330,11 @@ export default function TournamentPage() {
                     className="block w-full mt-1 p-2 rounded text-[#20201d]"
                     value={name}
                     onChange={(e: any) => handleParticipantNameChange(i, e.target.value)}
-                    placeholder="Enter name for temporary participant"
+                    placeholder="Enter name"
                     required
                   />
                 </label>
               ))}
-              <small className="text-gray-400">
-                ℹ️ These will be temporary accounts for this tournament only
-              </small>
             </div>
             
             <button

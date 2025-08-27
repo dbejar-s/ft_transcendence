@@ -29,7 +29,8 @@ function initializeDatabase() {
       language TEXT DEFAULT 'en',
       twofa_enabled INTEGER DEFAULT 0, -- 0 = false, 1 = true
       twofa_code TEXT,
-      twofa_expires DATETIME
+      twofa_expires DATETIME,
+      isTemporary INTEGER DEFAULT 0 -- Add isTemporary column directly in table creation
     );
   `;
 
@@ -106,6 +107,7 @@ function initializeDatabase() {
     );
   `;
 
+  // Create all tables
   db.exec(createUserTable);
   db.exec(createFriendsTable);
   db.exec(createMatchesTable);
@@ -113,17 +115,26 @@ function initializeDatabase() {
   db.exec(createTournamentParticipantsTable);
   db.exec(createTournamentMatchesTable);
 
-  // Add phase column if it doesn't exist (migration)
+  // Add columns if they don't exist (migration for existing databases)
   try {
+    // Try to add phase column if it doesn't exist
     db.exec('ALTER TABLE tournament_matches ADD COLUMN phase TEXT DEFAULT "round_robin"');
-    db.exec('ALTER TABLE users ADD COLUMN isTemporary INTEGER DEFAULT 0');
     console.log('Added phase column to tournament_matches');
   } catch (error) {
     // Column already exists, ignore error
   }
 
+  try {
+    // Try to add isTemporary column if it doesn't exist
+    db.exec('ALTER TABLE users ADD COLUMN isTemporary INTEGER DEFAULT 0');
+    console.log('Added isTemporary column to users');
+  } catch (error) {
+    // Column already exists, ignore error
+  }
+
   console.log('Database tables initialized successfully.');
-  console.log("Using DB at: ", path.resolve('transcendence.db'));
+  console.log("Using DB at: ", dbPath);
 }
 
+// Initialize the database when this module is imported
 initializeDatabase();
