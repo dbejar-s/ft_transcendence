@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 type GameDisplayProps = {
   wsP1: WebSocket | null;
   wsP2: WebSocket | null;
+  onScoreUpdate?: (p1Score: number, p2Score: number) => void;
 };
 
 const FIELD_WIDTH = 1000;
@@ -18,7 +19,7 @@ type GameState = {
   p2PaddleY: number;
 };
 
-export default function GameDisplay({ wsP1, wsP2 }: GameDisplayProps) {
+export default function GameDisplay({ wsP1, wsP2, onScoreUpdate }: GameDisplayProps) {
   const [gameState, setGameState] = useState<GameState>({
     ballX: FIELD_WIDTH / 2,
     ballY: FIELD_HEIGHT / 2,
@@ -48,6 +49,23 @@ export default function GameDisplay({ wsP1, wsP2 }: GameDisplayProps) {
           const p2_pos_ratio = view.getFloat32(8, true);
           const ball_x_ratio = view.getFloat32(12, true);
           const ball_y_ratio = view.getFloat32(16, true);
+
+          console.debug(`[STATE UPDATE] Ball: (${ball_x_ratio.toFixed(2)}, ${ball_y_ratio.toFixed(2)}), P1: ${p1_pos_ratio.toFixed(2)}, P2: ${p2_pos_ratio.toFixed(2)}`);
+          
+          // Extract scores from STATE UPDATE message
+          // According to MESSAGE-FORMAT.md: 4 x 1 --- 4 x 2 --- 8 x B --- 2 x S
+          // Total body: 4 + 4 + 8 + 2 = 18 bytes
+          if (buffer.byteLength >= 22) { // 4 byte header + 18 byte body
+            const scoreOffset = 4 + 16; // header (4) + positions (4+4+8 = 16)
+            const p1Score = view.getUint8(scoreOffset);
+            const p2Score = view.getUint8(scoreOffset + 1);
+            console.debug(`[SCORES FROM STATE] P1: ${p1Score}, P2: ${p2Score}`);
+            
+            // Send scores to parent component
+            if (onScoreUpdate) {
+              onScoreUpdate(p1Score, p2Score);
+            }
+          }
 
           // The C server calculates positions based on its own field dimensions (40x20).
           // We must scale these ratios to our frontend's SVG dimensions.
@@ -100,19 +118,19 @@ export default function GameDisplay({ wsP1, wsP2 }: GameDisplayProps) {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.repeat) return;
-      const MOVE_DIRECTIONS = { UP: 1, DOWN: 2 };
+      const MOVE_DIRECTIONS = { DOWN: 1, UP: 2 };
 
       switch (e.key) {
-        case "s": case "S":
+        case "w": case "W":
           sendBinaryPaddleMove(wsP1, MOVE_DIRECTIONS.UP);
           break;
-        case "w": case "W":
+        case "s": case "S":
           sendBinaryPaddleMove(wsP1, MOVE_DIRECTIONS.DOWN);
           break;
-        case "l": case "L":
+        case "p": case "P":
           sendBinaryPaddleMove(wsP2, MOVE_DIRECTIONS.UP);
           break;
-        case "p": case "P":
+        case "l": case "L":
           sendBinaryPaddleMove(wsP2, MOVE_DIRECTIONS.DOWN);
           break;
       }
@@ -121,7 +139,7 @@ export default function GameDisplay({ wsP1, wsP2 }: GameDisplayProps) {
     const handleKeyUp = (e: KeyboardEvent) => {
       const MOVE_DIRECTION_STOP = 0;
       switch (e.key) {
-        case "s": case "S": case "w": case "W":
+        case "w": case "W": case "s": case "S":
           sendBinaryPaddleMove(wsP1, MOVE_DIRECTION_STOP);
           break;
         case "p": case "P": case "l": case "L":
