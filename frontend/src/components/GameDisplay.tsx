@@ -9,7 +9,7 @@ type GameDisplayProps = {
 const FIELD_WIDTH = 1000;
 const FIELD_HEIGHT = 600;
 const PADDLE_WIDTH = 20;
-const PADDLE_HEIGHT = 80;
+const PADDLE_HEIGHT = 120;
 const BALL_SIZE = 20;
 
 type GameState = {
@@ -155,7 +155,6 @@ export default function GameDisplay({ wsP1, wsP2, onScoreUpdate }: GameDisplayPr
       window.removeEventListener("keyup", handleKeyUp);
     };
   }, [wsP1, wsP2]);
-
 
   return (
     <svg
