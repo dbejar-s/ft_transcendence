@@ -65,7 +65,7 @@ function initializeDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       gameMode TEXT NOT NULL,
-      status TEXT DEFAULT 'registration', -- registration, group, elimination, finished
+      status TEXT DEFAULT 'registration', -- registration, ongoing, finished
       phase TEXT DEFAULT 'registration',
       maxPlayers INTEGER DEFAULT 16,
       startDate DATETIME,
@@ -96,6 +96,7 @@ function initializeDatabase() {
       player2Score INTEGER DEFAULT 0,
       winnerId TEXT,
       round INTEGER DEFAULT 1,
+      phase TEXT DEFAULT 'round_robin', -- round_robin, winners_bracket, losers_bracket, final_bracket
       status TEXT DEFAULT 'pending', -- pending, finished
       playedAt DATETIME,
       FOREIGN KEY (tournamentId) REFERENCES tournaments(id),
@@ -112,8 +113,16 @@ function initializeDatabase() {
   db.exec(createTournamentParticipantsTable);
   db.exec(createTournamentMatchesTable);
 
-  console.log('Database tables initialized successfully.');
+  // Add phase column if it doesn't exist (migration)
+  try {
+    db.exec('ALTER TABLE tournament_matches ADD COLUMN phase TEXT DEFAULT "round_robin"');
+    db.exec('ALTER TABLE users ADD COLUMN isTemporary INTEGER DEFAULT 0');
+    console.log('Added phase column to tournament_matches');
+  } catch (error) {
+    // Column already exists, ignore error
+  }
 
+  console.log('Database tables initialized successfully.');
   console.log("Using DB at: ", path.resolve('transcendence.db'));
 }
 

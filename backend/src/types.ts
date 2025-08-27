@@ -14,7 +14,7 @@ export interface Tournament {
   id: number
   name: string
   gameMode: string
-  status?: 'registration' | 'group' | 'elimination' | 'finished'
+  status?: 'registration' | 'ongoing' | 'finished' 
   phase?: string
   maxPlayers?: number
   startDate?: string

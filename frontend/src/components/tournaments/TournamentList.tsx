@@ -7,7 +7,7 @@ import TournamentBracket from "./TournamentBracket"
 interface Tournament {
   id: number
   name: string
-  status: "ongoing" | "finished"
+  status: "registration" | "ongoing" | "finished"
 }
 
 // Result interface
@@ -32,19 +32,23 @@ export default function TournamentList({ refreshKey = 0 }: { refreshKey?: number
 
   const fetchParticipants = async (tournamentId: number) => {
     try {
-      const token = localStorage.getItem('authToken')
+      const token = localStorage.getItem('token')
       const response = await fetch(`http://localhost:3001/api/tournaments/${tournamentId}/participants`, {
-        headers: {
+        headers: token ? {
           'Authorization': `Bearer ${token}`
-        }
+        } : {}
       })
       
       if (response.ok) {
         const data = await response.json()
-        setParticipantsByTournament((prev: Record<number, any[]>) => ({ ...prev, [tournamentId]: data.participants || [] }))
+        setParticipantsByTournament((prev: Record<number, any[]>) => ({ ...prev, [tournamentId]: data || [] }))
+      } else {
+        console.log(`No participants for tournament ${tournamentId}`)
+        setParticipantsByTournament((prev: Record<number, any[]>) => ({ ...prev, [tournamentId]: [] }))
       }
     } catch (error) {
       console.error('Error fetching participants:', error)
+      setParticipantsByTournament((prev: Record<number, any[]>) => ({ ...prev, [tournamentId]: [] }))
     }
   }
 
@@ -64,12 +68,12 @@ export default function TournamentList({ refreshKey = 0 }: { refreshKey?: number
     }
   }
 
-  // Charger la liste des tournois
+  // Load tournaments on mount or when refreshKey changes
   useEffect(() => {
     fetchTournaments();
   }, [refreshKey]);
 
-  // Charger les résultats d’un tournoi
+  // Load participants for selected tournament
   const handleViewResults = async (tournament: Tournament) => {
     setSelectedTournament(tournament)
     setShowResultsModal(true)
@@ -87,11 +91,15 @@ export default function TournamentList({ refreshKey = 0 }: { refreshKey?: number
     }
   }
 
-
-  // Charger les participants
+  // Delete tournament
   const deleteTournament = async (tournamentId: number) => {
     try {
-      const token = localStorage.getItem('authToken')
+      const token = localStorage.getItem('token')
+      if (!token) {
+        alert('You must be logged in to delete a tournament');
+        return;
+      }
+
       const response = await fetch(`http://localhost:3001/api/tournaments/${tournamentId}`, {
         method: 'DELETE',
         headers: {
@@ -104,9 +112,11 @@ export default function TournamentList({ refreshKey = 0 }: { refreshKey?: number
       } else {
         const error = await response.json()
         console.error('Error deleting tournament:', error.message)
+        alert('Error deleting tournament: ' + error.message)
       }
     } catch (error) {
       console.error('Error deleting tournament:', error)
+      alert('Error deleting tournament')
     }
   }
 
@@ -143,51 +153,43 @@ export default function TournamentList({ refreshKey = 0 }: { refreshKey?: number
               <div>
                 <div className="font-bold text-lg">{tournament.name}</div>
                 <div className="text-sm opacity-70">
-                  {tournament.status === "ongoing"
+                  {tournament.status === "registration"
+                    ? translate("registration") || "Registration"
+                    : tournament.status === "ongoing"
                     ? translate("ongoing") || "Ongoing"
                     : translate("finished") || "Finished"}
                 </div>
               </div>
 
               <div className="flex gap-4">
-				{tournament.status === "ongoing" && (
-					<>
-						<button
-							onClick={() => handleViewBracket(tournament.id)}
-							className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors font-semibold"
-						>
-							{translate("viewBracket") || "View Bracket"}
-						</button>
-					</>
-				)}
-				{tournament.status === "finished" && (
-					<>
-						<button
-							onClick={() => handleViewResults(tournament)}
-							className="bg-[#FFFACD] text-[#20201d] px-4 py-2 rounded hover:bg-opacity-90 transition-colors font-semibold"
-						>
-							{translate("viewResults") || "View Results"}
-						</button>
-						<button
-							onClick={() => handleViewBracket(tournament.id)}
-							className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors font-semibold"
-						>
-							{translate("viewBracket") || "View Bracket"}
-						</button>
-						{/* Check if current user is the creator to show delete button */}
-						{participantsByTournament[tournament.id] && 
-						 participantsByTournament[tournament.id].length > 0 && 
-						 participantsByTournament[tournament.id][0]?.id === player?.id && (
-							<button
-								onClick={() => deleteTournament(tournament.id)}
-								className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors font-semibold"
-							>
-								{translate("deleteTournament") || "Delete Tournament"}
-							</button>
-						)}
-					</>
-				)}
+                {/* Boutons pour tous les statuts */}
+                <button
+                  onClick={() => handleViewBracket(tournament.id)}
+                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors font-semibold"
+                >
+                  {translate("viewBracket") || "View Bracket"}
+                </button>
 
+                {tournament.status === "finished" && (
+                  <button
+                    onClick={() => handleViewResults(tournament)}
+                    className="bg-[#FFFACD] text-[#20201d] px-4 py-2 rounded hover:bg-opacity-90 transition-colors font-semibold"
+                  >
+                    {translate("viewResults") || "View Results"}
+                  </button>
+                )}
+
+                {/* Check if current user is the creator to show delete button */}
+                {participantsByTournament[tournament.id] && 
+                 participantsByTournament[tournament.id].length > 0 && 
+                 participantsByTournament[tournament.id][0]?.id === player?.id && (
+                  <button
+                    onClick={() => deleteTournament(tournament.id)}
+                    className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors font-semibold"
+                  >
+                    {translate("deleteTournament") || "Delete Tournament"}
+                  </button>
+                )}
               </div>
             </div>
 

@@ -15,27 +15,40 @@ export async function userRoutes(fastify: FastifyInstance) {
 
     // Create a temporary user (for tournament participants)
     fastify.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
-        const { username } = request.body as any;
+        const { username, isTemporary } = request.body as { username: string; isTemporary?: boolean };
 
         if (!username) {
             return reply.status(400).send({ message: 'Username is required' });
         }
 
         try {
-            // Check if user already exists
+            // For temporary users, check if username already exists
             const existingUser = db.prepare('SELECT * FROM users WHERE username = ?').get(username) as any;
             if (existingUser) {
-                return reply.send({ id: existingUser.id, username: existingUser.username });
+                // If user exists and it's temporary, return it
+                if (existingUser.status === 'temporary' || existingUser.isTemporary) {
+                    return reply.send({ id: existingUser.id, username: existingUser.username, isTemporary: true });
+                } else {
+                    // If it's a real user, don't allow creating a temporary with same name
+                    return reply.status(409).send({ message: 'Username already exists' });
+                }
             }
 
             // Create temporary user
             const id = crypto.randomUUID();
             const defaultAvatar = '/uploads/default-avatar.png';
-            const stmt = db.prepare('INSERT INTO users (id, username, avatar, status) VALUES (?, ?, ?, ?)');
-            stmt.run(id, username, defaultAvatar, 'temporary');
             
-            reply.status(201).send({ id, username });
+            const stmt = db.prepare(`
+                INSERT INTO users (id, username, avatar, status, isTemporary) 
+                VALUES (?, ?, ?, ?, ?)
+            `);
+            stmt.run(id, username, defaultAvatar, 'temporary', isTemporary ? 1 : 0);
+            
+            console.log(`Created ${isTemporary ? 'temporary' : 'regular'} user:`, { id, username });
+            
+            reply.status(201).send({ id, username, isTemporary: isTemporary || false });
         } catch (error: any) {
+            console.error('Error creating user:', error);
             reply.status(500).send({ message: 'Database error', error: error.message });
         }
     });
@@ -144,4 +157,31 @@ export async function userRoutes(fastify: FastifyInstance) {
 
         reply.send({ message: 'Profile updated successfully', user: updatedUser });
     });
+}
+
+function updateUserStats(userId: string, tournamentId: string, isWinner: boolean, score: number) {
+  try {
+    // Check if the user is a temporary user
+    const user = db.prepare('SELECT isTemporary FROM users WHERE id = ?').get(userId) as { isTemporary: number };
+    
+    if (user && !user.isTemporary) {
+      // Only for real users, update the stats
+      const statsUpdate = db.prepare(`
+        INSERT OR REPLACE INTO user_stats (userId, tournaments_played, tournaments_won, total_score)
+        VALUES (
+          ?, 
+          COALESCE((SELECT tournaments_played FROM user_stats WHERE userId = ?), 0) + 1,
+          COALESCE((SELECT tournaments_won FROM user_stats WHERE userId = ?), 0) + ?,
+          COALESCE((SELECT total_score FROM user_stats WHERE userId = ?), 0) + ?
+        )
+      `);
+      statsUpdate.run(userId, userId, userId, isWinner ? 1 : 0, userId, score);
+      
+      console.log(`Updated stats for real user ${userId}: winner=${isWinner}, score=${score}`);
+    } else {
+      console.log(`Skipping stats update for temporary user ${userId}`);
+    }
+  } catch (error) {
+    console.error('Error updating user stats:', error);
+  }
 }

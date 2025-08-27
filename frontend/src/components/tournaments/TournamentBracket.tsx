@@ -1,6 +1,4 @@
-import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { usePlayer } from '../../context/PlayerContext';
+import { useEffect, useState } from 'react';
 
 interface Match {
   id: number;
@@ -13,6 +11,7 @@ interface Match {
   player2Score?: number;
   winnerId?: string;
   round: number;
+  phase: string;
   status: 'pending' | 'finished';
   playedAt?: string;
 }
@@ -24,371 +23,414 @@ interface Tournament {
   winnerId?: string;
 }
 
+interface Standing {
+  userId: string;
+  username: string;
+  wins: number;
+  losses: number;
+  points: number;
+  totalScore: number;
+  rank: number;
+}
+
 interface TournamentBracketProps {
   tournamentId: number;
   onClose: () => void;
 }
 
 export default function TournamentBracket({ tournamentId, onClose }: TournamentBracketProps) {
-  const { t: translate } = useTranslation();
-  const { player } = usePlayer();
   const [tournament, setTournament] = useState<Tournament | null>(null);
-  const [myMatches, setMyMatches] = useState<Match[]>([]);
-  const [participants, setParticipants] = useState<any[]>([]);
-  const [bracket, setBracket] = useState<{ [key: number]: Match[] }>({});
+  const [standings, setStandings] = useState<Standing[]>([]);
+  const [currentMatches, setCurrentMatches] = useState<Match[]>([]);
+  const [currentRound, setCurrentRound] = useState<number>(1);
+  const [totalRounds, setTotalRounds] = useState<number>(1);
   const [loading, setLoading] = useState(true);
-  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
-  const [player1Score, setPlayer1Score] = useState<number>(0);
-  const [player2Score, setPlayer2Score] = useState<number>(0);
+  const [allMatches, setAllMatches] = useState<Match[]>([]);
 
-  useEffect(() => {
-    fetchTournamentData();
-    if (player && tournament?.status === 'ongoing') {
-      fetchMyMatches();
-    }
-  }, [tournamentId, player, tournament?.status]);
-
-  const fetchTournamentData = async () => {
+  const fetchBracketData = async () => {
+    setLoading(true);
     try {
       const response = await fetch(`http://localhost:3001/api/tournaments/${tournamentId}/bracket`);
-      if (response.ok) {
-        const data = await response.json();
-        setTournament(data.tournament);
-        setParticipants(data.participants);
-        setBracket(data.bracket);
+      const data = await response.json();
+      
+      setTournament(data.tournament);
+      setStandings(data.standings || []);
+      setCurrentMatches(data.currentMatches || []);
+      setCurrentRound(data.currentRound || 1);
+      setTotalRounds(data.totalRounds || 1);
+      
+      // If tournament is finished, fetch all matches
+      if (data.tournament?.status === 'finished') {
+        const allMatchesResponse = await fetch(`http://localhost:3001/api/tournaments/${tournamentId}`);
+        const tournamentData = await allMatchesResponse.json();
+        setAllMatches(tournamentData.matches || []);
       }
+      
+      console.log('Bracket data received:', data);
     } catch (error) {
-      console.error('Error fetching tournament data:', error);
+      console.error('Error fetching bracket data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchMyMatches = async () => {
-    if (!player) return;
-    
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3001/api/tournaments/${tournamentId}/my-matches`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setMyMatches(data);
-      }
-    } catch (error) {
-      console.error('Error fetching my matches:', error);
-    }
-  };
-
-  const initiateTournament = async () => {
-    if (!player) return;
-
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3001/api/tournaments/${tournamentId}/initiate`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        alert('Tournament initiated successfully!');
-        fetchTournamentData();
-      } else {
-        const error = await response.text();
-        alert(`Error initiating tournament: ${error}`);
-      }
-    } catch (error) {
-      console.error('Error initiating tournament:', error);
-      alert('Error initiating tournament');
-    }
-  };
-
-  const submitMatchResult = async () => {
-    if (!selectedMatch || !player) return;
-
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3001/api/tournaments/${tournamentId}/matches/${selectedMatch.id}/result`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          player1Score,
-          player2Score
-        })
-      });
-
-      if (response.ok) {
-        alert('Match result submitted successfully!');
-        setSelectedMatch(null);
-        setPlayer1Score(0);
-        setPlayer2Score(0);
-        fetchTournamentData();
-        fetchMyMatches();
-      } else {
-        const error = await response.text();
-        alert(`Error submitting result: ${error}`);
-      }
-    } catch (error) {
-      console.error('Error submitting match result:', error);
-      alert('Error submitting match result');
-    }
-  };
+  useEffect(() => {
+    fetchBracketData();
+  }, [tournamentId]);
 
   const launchMatch = (match: Match) => {
-    // Store match information for the Game component
     const matchData = {
       player1: match.player1Name,
       player2: match.player2Name,
       matchId: match.id,
       tournamentId: match.tournamentId,
-      round: match.round
+      round: match.round,
+      phase: match.phase
     };
-    
-    // Store in localStorage so Game component can access it
+
     localStorage.setItem('currentMatch', JSON.stringify(matchData));
-    
-    // Navigate to game page
     window.location.href = '/game';
   };
 
-  const isCreator = () => {
-    return participants.length > 0 && participants[0]?.id === player?.id;
+  const submitResult = async (matchId: number) => {
+    const player1Score = prompt('Enter Player 1 score:');
+    const player2Score = prompt('Enter Player 2 score:');
+    
+    if (player1Score === null || player2Score === null) return;
+    
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await fetch(`http://localhost:3001/api/tournaments/${tournamentId}/matches/${matchId}/result`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          player1Score: parseInt(player1Score),
+          player2Score: parseInt(player2Score)
+        })
+      });
+
+      if (response.ok) {
+        fetchBracketData(); // Refresh data
+      } else {
+        const error = await response.json();
+        alert('Error submitting result: ' + error.message);
+      }
+    } catch (error) {
+      console.error('Error submitting result:', error);
+      alert('Error submitting result');
+    }
   };
+
+  // Group matches by round for finished tournaments
+  const getMatchesByRoundAndPhase = () => {
+    if (tournament?.status !== 'finished') return {};
+    
+    const matchesByRound: { [round: number]: { [phase: string]: Match[] } } = {};
+    allMatches.forEach(match => {
+      if (!matchesByRound[match.round]) {
+        matchesByRound[match.round] = {};
+      }
+      if (!matchesByRound[match.round][match.phase]) {
+        matchesByRound[match.round][match.phase] = [];
+      }
+      matchesByRound[match.round][match.phase].push(match);
+    });
+    return matchesByRound;
+  };
+
+  // Get phase display name
+  const getPhaseDisplayName = (phase: string) => {
+    switch (phase) {
+      case 'round_1': return '🥊 Round 1';
+      case 'winners_bracket': return '🏆 Winners Bracket';
+      case 'losers_bracket': return '💔 Losers Bracket';
+      case 'crossover_match': return '⚔️ Crossover Match';
+      case 'final_bracket': return '🏁 Finals';
+      default: return phase;
+    }
+  };
+
+  const renderMatch = (match: Match) => {
+    // Couleur selon la phase
+    const getPhaseColor = (phase: string) => {
+      switch (phase) {
+        case 'round_1': return 'border-blue-500';
+        case 'winners_bracket': return 'border-green-500';
+        case 'losers_bracket': return 'border-red-500';
+        case 'crossover_match': return 'border-purple-500';
+        case 'final_bracket': return 'border-yellow-500';
+        default: return 'border-gray-500';
+      }
+    };
+
+    return (
+      <div key={match.id} className={`rounded-lg p-4 border-2 flex justify-between items-center ${
+        match.status === 'finished' 
+          ? `bg-green-900/30 ${getPhaseColor(match.phase)}` 
+          : `bg-[#1a1a17] ${getPhaseColor(match.phase)}`
+      }`}>
+        <div className="flex-1">
+          <div className="flex justify-between items-center mb-2">
+            <div className="flex gap-2">
+              <span className={`text-xs px-2 py-1 rounded font-semibold ${
+                match.status === 'finished' 
+                  ? 'bg-green-600 text-white' 
+                  : 'bg-orange-600 text-white'
+              }`}>
+                {match.status === 'finished' ? '✅ Finished' : '⏳ Pending'}
+              </span>
+              
+              {/* Phase badge */}
+              <span className={`text-xs px-2 py-1 rounded font-semibold ${
+                match.phase === 'winners_bracket' ? 'bg-green-700 text-white' :
+                match.phase === 'losers_bracket' ? 'bg-red-700 text-white' :
+                match.phase === 'crossover_match' ? 'bg-purple-700 text-white' :
+                'bg-blue-700 text-white'
+              }`}>
+                {getPhaseDisplayName(match.phase)}
+              </span>
+            </div>
+            
+            {match.status === 'finished' && match.winnerId && (
+              <span className="text-green-400 text-sm font-semibold">
+                🏆 Winner: {match.winnerId === match.player1Id ? match.player1Name : match.player2Name}
+              </span>
+            )}
+          </div>
+          
+          <div className="flex justify-between items-center mb-2">
+            <div className={`font-semibold ${
+              match.status === 'finished' && match.winnerId === match.player1Id 
+                ? 'text-green-400' 
+                : match.status === 'finished' 
+                ? 'text-red-300' 
+                : ''
+            }`}>
+              {match.player1Name}
+              {match.status === 'finished' && (
+                <span className="ml-2 text-lg font-bold">
+                  ({match.player1Score})
+                </span>
+              )}
+            </div>
+            <div className="mx-4 text-gray-400 font-bold">VS</div>
+            <div className={`font-semibold text-right ${
+              match.status === 'finished' && match.winnerId === match.player2Id 
+                ? 'text-green-400' 
+                : match.status === 'finished' 
+                ? 'text-red-300' 
+                : ''
+            }`}>
+              {match.player2Name}
+              {match.status === 'finished' && (
+                <span className="ml-2 text-lg font-bold">
+                  ({match.player2Score})
+                </span>
+              )}
+            </div>
+          </div>
+          
+          {match.status === 'finished' && match.playedAt && (
+            <div className="text-xs text-gray-400 text-center">
+              Played: {new Date(match.playedAt).toLocaleString()}
+            </div>
+          )}
+        </div>
+        
+        {match.status === 'pending' && (
+          <div className="flex gap-2 ml-4">
+            <button
+              onClick={() => launchMatch(match)}
+              className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded font-semibold"
+            >
+              🎮 Play
+            </button>
+            <button
+              onClick={() => submitResult(match.id)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-semibold"
+            >
+              📝 Submit Score
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderStandings = () => (
+    <div className="bg-[#1a1a17] rounded-lg p-6">
+      <h3 className="text-2xl font-bold mb-4 text-center text-yellow-400">
+        {tournament?.status === 'finished' ? '🏆 Final Standings' : '📊 Current Standings'}
+      </h3>
+      
+      {tournament?.status === 'finished' && standings.length > 0 && (
+        <div className="mb-6 text-center">
+          <div className="inline-flex items-center gap-3 bg-yellow-600 text-black px-6 py-3 rounded-lg font-bold text-xl">
+            <span className="text-2xl">👑</span>
+            <span>Champion: {standings[0]?.username}</span>
+            <span className="text-2xl">🏆</span>
+          </div>
+        </div>
+      )}
+      
+      <div className="space-y-3">
+        {standings.map((standing) => (
+          <div 
+            key={standing.userId} 
+            className={`flex justify-between items-center p-4 rounded-lg ${
+              standing.rank === 1 
+                ? 'bg-gradient-to-r from-yellow-600 to-yellow-500 text-black font-bold border-2 border-yellow-300' 
+                : standing.rank === 2
+                ? 'bg-gradient-to-r from-gray-400 to-gray-300 text-black font-bold border-2 border-gray-200'
+                : standing.rank === 3
+                ? 'bg-gradient-to-r from-amber-600 to-amber-500 text-black font-bold border-2 border-amber-300'
+                : 'bg-[#2a2a27] border border-gray-600'
+            }`}
+          >
+            <div className="flex items-center gap-4">
+              <span className="text-2xl font-bold">
+                {standing.rank === 1 ? '🥇' : standing.rank === 2 ? '🥈' : standing.rank === 3 ? '🥉' : `#${standing.rank}`}
+              </span>
+              <span className="text-lg font-semibold">{standing.username}</span>
+              {standing.rank === 1 && tournament?.status === 'finished' && (
+                <span className="text-2xl animate-bounce">👑</span>
+              )}
+            </div>
+            <div className="flex gap-6 text-sm font-semibold">
+              <span className="text-green-400">Wins: {standing.wins}</span>
+              <span className="text-red-400">Losses: {standing.losses}</span>
+              <span className="text-blue-400">Points: {standing.points}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      {tournament?.status === 'finished' && (
+        <div className="mt-6 text-center text-gray-400 text-sm">
+          <p>🎊 Thank you all for participating! 🎊</p>
+        </div>
+      )}
+    </div>
+  );
 
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50">
-        <div className="bg-[#20201d] p-6 rounded-lg text-[#FFFACD]">
-          <p>{translate('loading') || 'Loading...'}</p>
-        </div>
+        <div className="text-[#FFFACD] text-xl">Loading bracket...</div>
       </div>
     );
   }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4">
-      <div className="bg-[#20201d] rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto text-[#FFFACD] relative shadow-lg">
-        <div className="sticky top-0 bg-[#20201d] p-6 border-b border-[#FFFACD] border-opacity-20">
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 text-red-400 hover:text-red-300 font-bold text-xl"
-            aria-label="Close"
-          >
-            &times;
-          </button>
-          
-          <h2 className="text-2xl font-bold mb-2">{tournament?.name}</h2>
-          <div className="flex justify-between items-center">
-            <span className="text-sm opacity-70">
-              {translate('status')}: {tournament?.status}
-            </span>
-            
-            {tournament?.status === 'registration' && isCreator() && (
-              <button
-                onClick={initiateTournament}
-                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 font-semibold"
-              >
-                {translate('initiateTournament') || 'Initiate Tournament'}
-              </button>
-            )}
+      <div className="bg-[#20201d] rounded-lg max-w-7xl w-full max-h-[90vh] overflow-auto text-[#FFFACD] relative">
+        <div className="sticky top-0 bg-[#20201d] p-6 border-b border-[#3a3a37] flex justify-between items-center">
+          <h2 className="text-3xl font-bold">{tournament?.name}</h2>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={onClose}
+              className="text-red-400 hover:text-red-300 font-bold text-xl"
+            >
+              ✕
+            </button>
           </div>
         </div>
 
-        <div className="p-6">
-          {/* My Matches Section */}
-          {myMatches.length > 0 && (
-            <div className="mb-8">
-              <h3 className="text-xl font-bold mb-4">{translate('myMatches') || 'My Matches'}</h3>
-              <div className="grid gap-4">
-                {myMatches.map((match) => (
-                  <div key={match.id} className="bg-[#2a2a27] p-4 rounded-lg">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <span className="font-semibold">Round {match.round}</span>
-                        <div className="text-sm">
-                          {match.player1Name} vs {match.player2Name}
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => launchMatch(match)}
-                          className="bg-orange-500 text-white px-3 py-1 rounded hover:bg-orange-600 text-sm font-semibold"
-                        >
-                          🎮 Launch Match
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedMatch(match);
-                            setPlayer1Score(0);
-                            setPlayer2Score(0);
-                          }}
-                          className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
-                        >
-                          {translate('submitResult') || 'Submit Result'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Tournament Bracket */}
-          <div className="mb-8">
-            <h3 className="text-xl font-bold mb-4">{translate('bracket') || 'Bracket'}</h3>
-            {Object.keys(bracket).length > 0 ? (
-              <div className="space-y-6">
-                {Object.entries(bracket).map(([round, roundMatches]) => (
-                  <div key={round}>
-                    <h4 className="text-lg font-semibold mb-3">
-                      {translate('round')} {round}
-                    </h4>
-                    <div className="grid gap-2">
-                      {roundMatches.map((match) => (
-                        <div key={match.id} className="bg-[#2a2a27] p-3 rounded flex justify-between items-center">
-                          <div className="flex-1">
-                            <div className="flex justify-between items-center mb-2">
-                              <div>
-                                <span className={`${match.winnerId === match.player1Id ? 'font-bold text-green-400' : ''}`}>
-                                  {match.player1Name}
-                                </span>
-                                {match.player1Score !== undefined && (
-                                  <span className="ml-2">({match.player1Score})</span>
-                                )}
-                              </div>
-                              <span className="text-sm opacity-70 mx-4">vs</span>
-                              <div>
-                                <span className={`${match.winnerId === match.player2Id ? 'font-bold text-green-400' : ''}`}>
-                                  {match.player2Name}
-                                </span>
-                                {match.player2Score !== undefined && (
-                                  <span className="ml-2">({match.player2Score})</span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <div className="text-sm">
-                                {match.status === 'finished' ? (
-                                  <span className="text-green-400">✓ Finished</span>
-                                ) : (
-                                  <span className="text-yellow-400">⏳ Pending</span>
-                                )}
-                              </div>
-                              {match.status === 'pending' && (
-                                <button
-                                  onClick={() => launchMatch(match)}
-                                  className="bg-orange-500 text-white px-3 py-1 rounded hover:bg-orange-600 transition-colors text-sm font-semibold"
-                                >
-                                  🎮 Launch Match
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-center text-sm opacity-70">
-                {translate('noBracketYet') || 'Tournament bracket will appear here once initiated.'}
+        <div className="p-6 space-y-8">
+          {/* Tournament Status */}
+          <div className="text-center">
+            <h3 className="text-xl font-semibold mb-2">
+              {tournament?.status === 'ongoing' && `Round ${currentRound} of ${totalRounds}`}
+              {tournament?.status === 'finished' && '🏆 Tournament Finished'}
+            </h3>
+            {tournament?.status === 'ongoing' && (
+              <p className="text-gray-400">
+                Complete all matches to advance to the next round
+              </p>
+            )}
+            {tournament?.status === 'finished' && (
+              <p className="text-green-400 text-lg">
+                🎉 Congratulations to all participants!
               </p>
             )}
           </div>
 
-          {/* Participants */}
-          <div>
-            <h3 className="text-xl font-bold mb-4">{translate('participants') || 'Participants'}</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-              {participants.map((participant) => (
-                <div 
-                  key={participant.id} 
-                  className={`p-2 rounded text-center text-sm ${
-                    participant.status === 'winner' ? 'bg-yellow-600' :
-                    participant.status === 'advanced' ? 'bg-green-600' :
-                    participant.status === 'eliminated' ? 'bg-red-600' :
-                    'bg-[#2a2a27]'
-                  }`}
-                >
-                  {participant.username}
-                  {participant.status === 'winner' && ' 👑'}
+          {/* Final Standings - Show first for finished tournaments */}
+          {tournament?.status === 'finished' && standings.length > 0 && (
+            <div>
+              {renderStandings()}
+            </div>
+          )}
+
+          {/* All Matches by Round - For finished tournaments */}
+          {tournament?.status === 'finished' && allMatches.length > 0 && (
+            <div>
+              <h3 className="text-2xl font-bold mb-6 text-center text-blue-400">
+                📊 All Tournament Matches
+              </h3>
+              {Object.entries(getMatchesByRoundAndPhase())
+                .sort(([a], [b]) => parseInt(a) - parseInt(b))
+                .map(([round, phaseMatches]) => (
+                  <div key={round} className="mb-8">
+                    <h4 className="text-xl font-semibold mb-4 text-orange-400">
+                      Round {round}
+                    </h4>
+                    
+                    {/* Group by phase within each round */}
+                    {Object.entries(phaseMatches).map(([phase, matches]) => (
+                      <div key={phase} className="mb-6">
+                        <h5 className="text-lg font-medium mb-3 text-yellow-300">
+                          {getPhaseDisplayName(phase)}
+                        </h5>
+                        <div className="space-y-4 ml-4">
+                          {matches.map(match => renderMatch(match))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+            </div>
+          )}
+
+          {/* Current Matches by Phase - For ongoing tournaments */}
+          {tournament?.status === 'ongoing' && currentMatches.length > 0 && (
+            <div>
+              <h3 className="text-2xl font-bold mb-6 text-center text-orange-400">
+                {`Round ${currentRound} Matches`}
+              </h3>
+              
+              {/* Group current matches by phase */}
+              {Object.entries(
+                currentMatches.reduce((acc, match) => {
+                  if (!acc[match.phase]) acc[match.phase] = [];
+                  acc[match.phase].push(match);
+                  return acc;
+                }, {} as { [phase: string]: Match[] })
+              ).map(([phase, matches]) => (
+                <div key={phase} className="mb-6">
+                  <h4 className="text-lg font-medium mb-3 text-yellow-300">
+                    {getPhaseDisplayName(phase)}
+                  </h4>
+                  <div className="space-y-4 ml-4">
+                    {matches.map(match => renderMatch(match))}
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* Submit Match Result Modal */}
-        {selectedMatch && (
-          <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-60">
-            <div className="bg-[#20201d] p-6 rounded-lg max-w-md w-full text-[#FFFACD] relative shadow-lg">
-              <button
-                onClick={() => setSelectedMatch(null)}
-                className="absolute top-3 right-3 text-red-400 hover:text-red-300 font-bold text-xl"
-              >
-                &times;
-              </button>
-              
-              <h3 className="text-xl font-bold mb-4">
-                {translate('submitMatchResult') || 'Submit Match Result'}
-              </h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm mb-1">
-                    {selectedMatch.player1Name} {translate('score')}
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={player1Score}
-                    onChange={(e) => setPlayer1Score(parseInt(e.target.value) || 0)}
-                    className="w-full p-2 rounded text-[#20201d]"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm mb-1">
-                    {selectedMatch.player2Name} {translate('score')}
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={player2Score}
-                    onChange={(e) => setPlayer2Score(parseInt(e.target.value) || 0)}
-                    className="w-full p-2 rounded text-[#20201d]"
-                  />
-                </div>
-                
-                <div className="flex gap-4 mt-6">
-                  <button
-                    onClick={() => setSelectedMatch(null)}
-                    className="flex-1 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-                  >
-                    {translate('cancel') || 'Cancel'}
-                  </button>
-                  <button
-                    onClick={submitMatchResult}
-                    className="flex-1 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                  >
-                    {translate('submit') || 'Submit'}
-                  </button>
-                </div>
-              </div>
+          {/* Current Standings - For ongoing tournaments */}
+          {tournament?.status === 'ongoing' && standings.length > 0 && (
+            <div>
+              {renderStandings()}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
