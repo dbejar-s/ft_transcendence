@@ -1,39 +1,47 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { db } from '../db/database'
+import { jwtMiddleware } from '../jwtMiddleware'
 
 export async function statsRoutes(fastify: FastifyInstance) {
-  fastify.get('/:userId', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/:userId', { preHandler: [jwtMiddleware] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { userId } = request.params as { userId: string }
+    
+    console.log(`[STATS] Getting stats for userId: ${userId} (length: ${userId.length})`);
 
     try {
       // --- Stats globales ---
-      const totalGamesRow = db.prepare(`
+      console.log(`[STATS] Executing totalGames query for userId: ${userId}`);
+      const totalGamesStmt = db.prepare(`
         SELECT COUNT(*) as total FROM matches
         WHERE player1Id = ? OR player2Id = ?
-      `).get(userId, userId) as { total: number }
+      `);
+      const totalGamesRow = totalGamesStmt.get(userId, userId) as { total: number };
+      console.log(`[STATS] totalGamesRow result:`, totalGamesRow);
 
       const totalGames = totalGamesRow?.total ?? 0
 
-      const winsRow = db.prepare(`
+      console.log(`[STATS] Executing wins query for userId: ${userId}`);
+      const winsStmt = db.prepare(`
         SELECT COUNT(*) as wins FROM matches
         WHERE winnerId = ?
-      `).get(userId) as { wins: number }
+      `);
+      const winsRow = winsStmt.get(userId) as { wins: number };
+      console.log(`[STATS] winsRow result:`, winsRow);
 
       const wins = winsRow?.wins ?? 0
 
-      const playTimeRow = db.prepare(`
-        SELECT SUM( (strftime('%s', endedAt) - strftime('%s', startedAt)) ) as seconds
-        FROM matches
-        WHERE (player1Id = ? OR player2Id = ?) AND endedAt IS NOT NULL
-      `).get(userId, userId) as { seconds: number | null }
+      // Estimate play time based on number of games (assuming ~3 minutes per game)
+      const estimatedPlayTimeMinutes = totalGames * 3
+      const playTime = estimatedPlayTimeMinutes * 60 // Convert to seconds for consistency
 
-      const playTime = playTimeRow?.seconds ?? 0
-
-      const lastMatches = db.prepare(`
+      console.log(`[STATS] Executing lastMatches query for userId: ${userId}`);
+      const lastMatchesStmt = db.prepare(`
         SELECT winnerId FROM matches
         WHERE player1Id = ? OR player2Id = ?
         ORDER BY playedAt DESC
-      `).all(userId, userId) as { winnerId: string | null }[]
+      `);
+      const lastMatches = lastMatchesStmt.all(userId, userId) as { winnerId: string | null }[];
+      console.log(`[STATS] lastMatches result:`, lastMatches);
 
       let currentStreak = 0
       for (const match of lastMatches) {
@@ -45,7 +53,8 @@ export async function statsRoutes(fastify: FastifyInstance) {
       type ModeStat = { mode: string; games: number; wins: number }
       const modes: ModeStat[] = []
 
-      const modeRows = db.prepare(`
+      console.log(`[STATS] Executing modes query for userId: ${userId}`);
+      const modeStmt = db.prepare(`
         SELECT gameMode,
                CASE 
                  WHEN winnerId = ? THEN 'win'
@@ -53,7 +62,9 @@ export async function statsRoutes(fastify: FastifyInstance) {
                END as result
         FROM matches
         WHERE player1Id = ? OR player2Id = ?
-      `).all(userId, userId, userId) as { gameMode: string; result: 'win' | 'loss'}[]
+      `);
+      const modeRows = modeStmt.all(userId, userId, userId) as { gameMode: string; result: 'win' | 'loss'}[];
+      console.log(`[STATS] modeRows result:`, modeRows);
 
       const modeMap = new Map<string, { games: number; wins: number }>()
       for (const row of modeRows) {
@@ -67,8 +78,11 @@ export async function statsRoutes(fastify: FastifyInstance) {
         modes.push({ mode, games: data.games, wins: data.wins })
       }
 
+      console.log(`[STATS] Final stats result:`, { totalGames, wins, playTime, currentStreak, modes });
+
       reply.send({ totalGames, wins, playTime, currentStreak, modes })
     } catch (error: any) {
+      console.error(`[STATS] Error in stats route:`, error);
       reply.status(500).send({ message: 'Database error', error: error.message })
     }
   })

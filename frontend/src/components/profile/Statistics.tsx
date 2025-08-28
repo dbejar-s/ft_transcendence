@@ -20,18 +20,29 @@ export default function Statistics({ userId }: { userId: string }) {
   } | null>(null)
 
   useEffect(() => {
+    console.log('Fetching stats for user:', userId);
     statisticsService.getUserStats(userId)
-      .then(data => setStatsData(data))
-      .catch(console.error)
+      .then(data => {
+        console.log('Stats data received:', data);
+        setStatsData(data);
+      })
+      .catch(error => {
+        console.error('Error fetching stats:', error);
+      });
   }, [userId])
 
   // Add event listener for when a match is completed
   useEffect(() => {
     const handleMatchCompleted = () => {
-      console.log('Match completed, refreshing statistics...')
+      console.log('Match completed event received, refreshing statistics for user:', userId);
       statisticsService.getUserStats(userId)
-        .then(data => setStatsData(data))
-        .catch(console.error)
+        .then(data => {
+          console.log('Updated stats data received:', data);
+          setStatsData(data);
+        })
+        .catch(error => {
+          console.error('Error refreshing stats after match:', error);
+        });
     }
 
     window.addEventListener('matchCompleted', handleMatchCompleted)
@@ -58,7 +69,7 @@ export default function Statistics({ userId }: { userId: string }) {
     },
     {
       title: t("playTime") || "Play Time",
-      value: statsData ? `${Math.floor(statsData.playTime / 3600)}h` : "...",
+      value: statsData ? `${Math.floor(statsData.playTime / 60)}min` : "...",
       icon: <Clock size={24} />,
     },
     {

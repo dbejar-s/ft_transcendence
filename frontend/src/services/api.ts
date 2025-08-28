@@ -92,5 +92,12 @@ export const matchHistoryService = {
 };
 
 export const statisticsService = {
-  getUserStats: (userId: string) => apiFetch(`/api/stats/${userId}`),
+  getUserStats: (userId: string) => {
+    const token = localStorage.getItem('token');
+    return apiFetch(`/api/stats/${userId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+  },
 }

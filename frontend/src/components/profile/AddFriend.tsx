@@ -42,6 +42,25 @@ export default function AddFriendOverlay({ userId, onClose, onFriendAdded }: Pro
   const [selected, setSelected] = useState<Friend | null>(null)
   const { t } = useTranslation()
 
+  // ------------------ LOAD USER DETAILS ------------------
+  const loadUserDetails = async (user: Friend) => {
+    try {
+      // First set the selected user with basic info
+      setSelected(user);
+      
+      // Then load detailed info with matches using the user profile route
+      const res = await fetch(`http://localhost:3001/api/users/${user.id}/profile`);
+      if (res.ok) {
+        const detailedData = await res.json();
+        setSelected(detailedData);
+      }
+      // If the details request fails, we still keep the basic user info
+    } catch (error) {
+      console.error('Error loading user details:', error);
+      // Keep the basic user info even if details fail
+    }
+  }
+
   // ------------------ EFFECT: SEARCH USERS ------------------
   useEffect(() => {
     if (!query.trim()) {
@@ -101,7 +120,7 @@ export default function AddFriendOverlay({ userId, onClose, onFriendAdded }: Pro
   // ------------------ MAIN OVERLAY ------------------
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-      <div className="bg-[#2a2a27] rounded-lg p-6 w-[28rem] relative max-h-[85vh] flex flex-col overflow-hidden">
+      <div className="bg-[#2a2a27] rounded-lg p-6 w-[40rem] relative max-h-[85vh] flex flex-col overflow-hidden">
         {/* Close button */}
         <button
           onClick={onClose}
@@ -136,7 +155,7 @@ export default function AddFriendOverlay({ userId, onClose, onFriendAdded }: Pro
             results.map((u) => (
               <div
                 key={u.id}
-                onClick={() => setSelected(u)}
+                onClick={() => loadUserDetails(u)}
                 className={`bg-[#20201d] p-3 rounded flex items-center gap-3 hover:bg-opacity-80 cursor-pointer ${
                   selected?.id === u.id ? "ring-2 ring-[#FFFACD]" : ""
                 }`}
@@ -195,7 +214,7 @@ export default function AddFriendOverlay({ userId, onClose, onFriendAdded }: Pro
             <FriendMatchHistory recentMatches={selected.recentMatches?.slice(0, 5) || []} />
 
             {/* Statistics */}
-            <FriendStatistics recentMatches={selected.recentMatches?.slice(0, 20) || []} />
+            <FriendStatistics friendId={selected.id} />
 
             {/* Add friend button */}
             <button

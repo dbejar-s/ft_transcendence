@@ -65,7 +65,7 @@ export default function FriendProfile({ friend, onClose }: Props) {
       </div>
 
       <FriendMatchHistory recentMatches={friend.recentMatches?.slice(0, 5) || []} />
-      <FriendStatistics recentMatches={friend.recentMatches?.slice(0, 20) || []} />
+      <FriendStatistics friendId={friend.id} />
     </div>
   )
 }
