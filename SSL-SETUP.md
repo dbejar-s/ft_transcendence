@@ -15,18 +15,33 @@ Since we use self-signed certificates for development, browsers will show securi
 
 2. **Accept Backend Certificate**:
    - Open: https://localhost:3001
-   - Click "Advanced" or "Show details"
-   - Click "Proceed to localhost (unsafe)" or "Accept risk and continue"
-   - You should see a "Not Found" error (this is normal)
+   - **Chrome/Edge**: Click "Advanced" → "Proceed to localhost (unsafe)"
+   - **Firefox**: Click "Advanced" → "Accept the Risk and Continue"  
+   - **Safari**: Click "Show Details" → "visit this website" → "Visit Website"
+   - You should see a JSON error like `{"message":"Route GET:/ not found","error":"Not Found","statusCode":404}` - **THIS IS NORMAL**
 
 3. **Accept Frontend Certificate**:
    - Open: https://localhost:5173
-   - Click "Advanced" or "Show details"  
-   - Click "Proceed to localhost (unsafe)" or "Accept risk and continue"
+   - **Chrome/Edge**: Click "Advanced" → "Proceed to localhost (unsafe)"
+   - **Firefox**: Click "Advanced" → "Accept the Risk and Continue"
+   - **Safari**: Click "Show Details" → "visit this website" → "Visit Website"
    - The application should now load properly
 
-4. **Test Login**:
-   - Try logging in - it should work now!
+4. **Clear browser cache** (if still having issues):
+   - **Chrome**: Settings → Privacy and security → Clear browsing data → Cached images and files
+   - **Firefox**: Settings → Privacy & Security → Clear Data → Cached Web Content
+   - **Safari**: Develop → Empty Caches
+
+5. **Test Login**:
+   - Try registering a new account or logging in
+   - Check browser developer console (F12) for any remaining errors
+
+### 🚨 Critical Notes:
+
+- **You MUST accept certificates for BOTH URLs** (backend and frontend)
+- **The browser may "forget" certificates** after restart - repeat steps if needed
+- **This is normal behavior** for self-signed certificates
+- **Each browser tab/window** may need to accept certificates separately
 
 ### Browser-Specific Instructions:
 
