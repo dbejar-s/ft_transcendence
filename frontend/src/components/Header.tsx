@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { LogOut } from "lucide-react";
-import { usePlayer } from "../context/PlayerContext"; // Import usePlayer
+import { usePlayer } from "../context/PlayerContext";
 
 interface HeaderProps {
   isLoggedIn: boolean;
@@ -72,29 +72,32 @@ export default function Header({
           </div>
         )}
 
-        <div className="flex items-center gap-2 ml-4 text-xl">
-          <button
-            onClick={() => changeLanguage("en")}
-            aria-label="English"
-            className="hover:scale-110 transition-transform"
-          >
-            🇬🇧
-          </button>
-          <button
-            onClick={() => changeLanguage("fr")}
-            aria-label="Français"
-            className="hover:scale-110 transition-transform"
-          >
-            🇫🇷
-          </button>
-          <button
-            onClick={() => changeLanguage("es")}
-            aria-label="Español"
-            className="hover:scale-110 transition-transform"
-          >
-            🇪🇸
-          </button>
-        </div>
+        {/* Show language buttons only if logged out */}
+        {!isLoggedIn && (
+          <div className="flex items-center gap-2 ml-4 text-xl">
+            <button
+              onClick={() => changeLanguage("en")}
+              aria-label="English"
+              className="hover:scale-110 transition-transform"
+            >
+              🇬🇧
+            </button>
+            <button
+              onClick={() => changeLanguage("fr")}
+              aria-label="Français"
+              className="hover:scale-110 transition-transform"
+            >
+              🇫🇷
+            </button>
+            <button
+              onClick={() => changeLanguage("es")}
+              aria-label="Español"
+              className="hover:scale-110 transition-transform"
+            >
+              🇪🇸
+            </button>
+          </div>
+        )}
       </nav>
     </header>
   );
