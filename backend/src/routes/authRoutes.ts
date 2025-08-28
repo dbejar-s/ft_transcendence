@@ -35,7 +35,24 @@ export async function authRoutes(fastify: FastifyInstance) {
             const id = crypto.randomUUID();
             const defaultAvatar = '/uploads/default-avatar.png'; // Make sure you have a default avatar image
             stmt.run(id, email, username, hashedPassword, defaultAvatar);
-            reply.status(201).send({ message: 'User registered successfully' });
+            
+            // Generate JWT immediately for new users (no 2FA required for registration)
+            const token = jwt.sign({ id, email }, process.env.JWT_SECRET as string, { expiresIn: '1h' });
+            
+            // Return user info (without password) and token
+            const newUser = {
+                id,
+                email,
+                username,
+                avatar: defaultAvatar,
+                language: 'en' // default language
+            };
+            
+            reply.status(201).send({ 
+                message: 'User registered successfully', 
+                token, 
+                user: newUser 
+            });
         } catch (error: any) {
             if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
                 return reply.status(409).send({ message: 'Email or username already exists' });

@@ -13,6 +13,7 @@ const pump = util.promisify(pipeline);
 export async function userRoutes(fastify: FastifyInstance) {
 
     fastify.get('/current', { preHandler: [jwtMiddleware] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    	reply.header('Cache-Control', 'no-store');
         if (!request.user) {
         return reply.status(401).send({ message: 'Unauthorized' })
         }
@@ -115,5 +116,75 @@ export async function userRoutes(fastify: FastifyInstance) {
         const updatedUser = updatedUserStmt.get(id);
 
         reply.send({ message: 'Profile updated successfully', user: updatedUser });
+    });
+
+    fastify.post('/complete-profile', { preHandler: [jwtMiddleware] }, async (request: FastifyRequest, reply: FastifyReply) => {
+        try {
+            console.log('=== COMPLETE PROFILE REQUEST ===');
+            
+            if (!request.user) {
+                return reply.status(401).send({ message: 'Unauthorized' });
+            }
+            
+            const targetUserId = request.user.id;
+            console.log('User ID from token:', targetUserId);
+            
+            const parts = request.parts();
+            const fields: { [key: string]: any } = {};
+            let uploadedAvatarUrl: string | undefined;
+
+            for await (const part of parts) {
+                if (part.type === 'file') {
+                    console.log('Processing file upload:', part.filename);
+                    const uploadsDir = path.join(__dirname, '..', '..', 'uploads');
+                    await fsp.mkdir(uploadsDir, { recursive: true });
+                    const filename = `${Date.now()}-${part.filename}`;
+                    const avatarPath = path.join(uploadsDir, filename);
+
+                    await pump(part.file, fs.createWriteStream(avatarPath));
+
+                    uploadedAvatarUrl = `/uploads/${filename}`;
+                    console.log('File uploaded to:', uploadedAvatarUrl);
+                } else {
+                    fields[part.fieldname] = part.value;
+                    console.log('Field received:', part.fieldname, '=', part.value);
+                }
+            }
+
+            const { username, language, avatarUrl } = fields;
+            console.log('Extracted fields:', { username, language, avatarUrl });
+
+            // Use uploaded avatar or predefined avatar URL
+            const finalAvatarUrl = uploadedAvatarUrl || avatarUrl || '/uploads/default-avatar.png';
+            console.log('Final avatar URL:', finalAvatarUrl);
+
+            console.log('Completing profile for user:', targetUserId);
+            console.log('Username:', username, 'Language:', language, 'Avatar:', finalAvatarUrl);
+
+            // Update the user
+            const updateStmt = db.prepare(`
+                UPDATE users 
+                SET username = ?, avatar = ?, language = ? 
+                WHERE id = ?
+            `);
+            
+            try {
+                updateStmt.run(username, finalAvatarUrl, language || 'en', targetUserId);
+            } catch (error: any) {
+                if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' && error.message.includes('users.username')) {
+                    return reply.status(409).send({ message: 'This username is already in use. Please, pick another one' });
+                }
+                throw error;
+            }
+
+            const updatedUserStmt = db.prepare('SELECT id, username, email, avatar, status, language FROM users WHERE id = ?');
+            const updatedUser = updatedUserStmt.get(targetUserId);
+
+            console.log('Profile completed successfully for user:', updatedUser);
+            reply.send({ message: 'Profile completed successfully', user: updatedUser });
+        } catch (error: any) {
+            console.error('Complete profile error:', error);
+            reply.status(500).send({ message: 'An unexpected error occurred' });
+        }
     });
 }

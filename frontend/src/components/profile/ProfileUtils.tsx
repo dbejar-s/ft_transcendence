@@ -1,15 +1,11 @@
 import type React from "react"
 import i18n from "i18next"
-import women1 from "../../assets/Profile/women1.png"
-import women2 from "../../assets/Profile/women2.png"
-import men1 from "../../assets/Profile/men1.png"
-import men2 from "../../assets/Profile/men2.png"
 
 export const predefinedAvatars = [
-  { src: women1, alt: "women1" },
-  { src: women2, alt: "women2" },
-  { src: men1, alt: "men1" },
-  { src: men2, alt: "men2" },
+  { src: "/assets/Profile/women1.png", alt: "women1" },
+  { src: "/assets/Profile/women2.png", alt: "women2" },
+  { src: "/assets/Profile/men1.png", alt: "men1" },
+  { src: "/assets/Profile/men2.png", alt: "men2" },
 ]
 
 // Types
@@ -83,8 +79,11 @@ export const submitProfile = async (
       formData.append("avatarUrl", avatar)
     }
 
-    const res = await fetch("/api/users/complete-profile", {
+    const res = await fetch("http://localhost:3001/api/users/complete-profile", {
       method: "POST",
+      headers: {
+        "Authorization": `Bearer ${localStorage.getItem("token")}`
+      },
       body: formData,
     })
 

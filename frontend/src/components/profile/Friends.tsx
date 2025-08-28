@@ -5,6 +5,7 @@ import type { Friend } from "./FriendProfile"
 import FriendProfile from "./FriendProfile"
 import AddFriendOverlay from "./AddFriend"
 import { useFriendStatus } from "./FriendStatus"
+import { getAvatarUrl } from "../../utils/avatarUtils"
 
 interface Match {
   id: string;
@@ -157,7 +158,7 @@ export default function Friends({ userId }: Props) {
                 >
                   <div className="relative">
                     <img
-                      src={friend.avatar}
+                      src={getAvatarUrl(friend.avatar)}
                       alt={friend.username}
                       className="w-12 h-12 rounded-full border-2 border-[#FFFACD] object-cover"
                     />
@@ -171,7 +172,7 @@ export default function Friends({ userId }: Props) {
                       ) : (
                         <>
                           <Clock size={12} />
-                          <span>{t("lastSeen")}: {friend.lastSeen || "-"}</span>
+                          <span>{t("offline")}</span>
                         </>
                       )}
                     </div>

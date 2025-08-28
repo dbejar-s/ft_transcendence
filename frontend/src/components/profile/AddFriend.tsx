@@ -4,6 +4,7 @@ import { X } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import FriendMatchHistory from "./FriendMatchHistory"
 import FriendStatistics from "./FriendStatistics"
+import { getAvatarUrl } from "../../utils/avatarUtils"
 
 // ------------------ TYPES ------------------
 export interface Match {
@@ -22,7 +23,6 @@ export interface Friend {
   username: string
   avatar: string
   status: "online" | "offline"
-  lastSeen?: string
   gamesPlayed?: number
   recentMatches?: Match[]
 }
@@ -143,7 +143,7 @@ export default function AddFriendOverlay({ userId, onClose, onFriendAdded }: Pro
               >
                 {/* Avatar */}
                 <img
-                  src={u.avatar}
+                  src={getAvatarUrl(u.avatar)}
                   alt={u.username}
                   className="w-10 h-10 rounded-full border-2 border-[#FFFACD] object-cover"
                 />
@@ -153,7 +153,7 @@ export default function AddFriendOverlay({ userId, onClose, onFriendAdded }: Pro
                   <p className="text-xs text-[#FFFACD] opacity-70">
                     {u.status?.toLowerCase() === "online"
                       ? t("online")
-                      : `${t("lastSeen")}: ${u.lastSeen || "-"}`}
+                      : `${t("offline")}`}
                   </p>
                 </div>
               </div>
@@ -174,7 +174,7 @@ export default function AddFriendOverlay({ userId, onClose, onFriendAdded }: Pro
             {/* Header info */}
             <div className="flex items-center gap-4">
               <img
-                src={selected.avatar}
+                src={getAvatarUrl(selected.avatar)}
                 alt={selected.username}
                 className="w-16 h-16 rounded-full border-2 border-[#FFFACD] object-cover"
               />
@@ -183,7 +183,7 @@ export default function AddFriendOverlay({ userId, onClose, onFriendAdded }: Pro
                 <p className="text-sm text-[#FFFACD]">
                   {selected.status === "online"
                     ? t("online")
-                    : `${t("lastSeen")}: ${selected.lastSeen || "N/A"}`}
+                    : `${t("offline")}`}
                 </p>
                 <p className="text-sm text-[#FFFACD]">
                   {t("gamesPlayed")}: {selected.gamesPlayed || 0}
