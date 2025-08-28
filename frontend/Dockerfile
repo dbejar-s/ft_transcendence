@@ -31,15 +31,27 @@ RUN npm run build
 
 FROM node:20-slim
 
+# Install OpenSSL for certificate generation
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY --from=build /app/dist /app/dist
 COPY --from=build /app/package.json /app/package.json
+COPY server.js /app/
 
+# Generate SSL certificates if they don't exist
+RUN mkdir -p certs && \
+    if [ ! -f certs/key.pem ]; then \
+        echo "[req]\ndefault_bits = 2048\nprompt = no\ndefault_md = sha256\ndistinguished_name = dn\nreq_extensions = v3_req\n\n[dn]\nC=US\nST=State\nL=City\nO=Organization\nCN=localhost\n\n[v3_req]\nbasicConstraints = CA:FALSE\nkeyUsage = nonRepudiation, digitalSignature, keyEncipherment\nsubjectAltName = @alt_names\n\n[alt_names]\nDNS.1 = localhost\nDNS.2 = *.localhost\nIP.1 = 127.0.0.1\nIP.2 = ::1" > certs/cert.conf; \
+        openssl genrsa -out certs/key.pem 2048; \
+        openssl req -new -x509 -key certs/key.pem -out certs/cert.pem -days 365 -config certs/cert.conf -extensions v3_req; \
+        echo "Generated SSL certificates for frontend"; \
+    fi
 
-RUN npm install -g serve
+RUN npm install express@^4.18.0
 
 EXPOSE 5173
 
-# Start the server
-CMD ["serve", "-s", "dist", "-l", "5173"]
+# Start the HTTPS server
+CMD ["node", "server.js"]

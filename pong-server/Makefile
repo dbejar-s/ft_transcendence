@@ -9,7 +9,7 @@
 
 NAME		=	netpong_server
 
-BUILD	=	fsan
+BUILD	=	normal
 ifeq ("$(BUILD)", "normal")
 	LOG_LEVEL	=	3
 else

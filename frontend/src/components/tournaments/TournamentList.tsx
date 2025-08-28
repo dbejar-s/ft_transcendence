@@ -33,7 +33,7 @@ export default function TournamentList({ refreshKey = 0 }: { refreshKey?: number
   const fetchParticipants = async (tournamentId: number) => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`http://localhost:3001/api/tournaments/${tournamentId}/participants`, {
+      const response = await fetch(`https://localhost:3001/api/tournaments/${tournamentId}/participants`, {
         headers: token ? {
           'Authorization': `Bearer ${token}`
         } : {}
@@ -54,7 +54,7 @@ export default function TournamentList({ refreshKey = 0 }: { refreshKey?: number
 
   const fetchTournaments = async () => {
     try {
-      const res = await fetch("http://localhost:3001/api/tournaments");
+      const res = await fetch("https://localhost:3001/api/tournaments");
       const tournamentsData = await res.json();
       setTournaments(tournamentsData);
       
@@ -72,6 +72,36 @@ export default function TournamentList({ refreshKey = 0 }: { refreshKey?: number
   useEffect(() => {
     fetchTournaments();
   }, [refreshKey]);
+
+  // Delete tournament
+  const deleteTournament = async (tournamentId: number) => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        alert('You must be logged in to delete a tournament');
+        return;
+      }
+
+      const response = await fetch(`https://localhost:3001/api/tournaments/${tournamentId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (response.ok) {
+        await fetchTournaments() // Refresh the list
+      } else {
+        const error = await response.json()
+        console.error('Error deleting tournament:', error.message)
+        alert('Error deleting tournament: ' + error.message)
+      }
+    } catch (error) {
+      console.error('Error deleting tournament:', error)
+      alert('Error deleting tournament')
+    }
+  }
+
 
   // Bracket
   const handleViewBracket = (tournamentId: number) => {

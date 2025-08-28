@@ -3,18 +3,78 @@ dotenv.config();
 
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import helmet from '@fastify/helmet';
+import rateLimit from '@fastify/rate-limit';
 import multipart from '@fastify/multipart';
 import path from 'path';
+import fs from 'fs';
 import { apiRoutes } from './routes/api';
 import { db } from './db/database';
 import { jwtMiddleware } from './jwtMiddleware';
 import { WebSocketServer } from "ws";
 import type WS from "ws";
 
-const fastify = Fastify({ logger: true });
+// HTTPS configuration
+const httpsOptions = {
+  key: fs.readFileSync(path.join(__dirname, '..', 'certs', 'key.pem')),
+  cert: fs.readFileSync(path.join(__dirname, '..', 'certs', 'cert.pem'))
+};
+
+const fastify = Fastify({ 
+  logger: true,
+  https: httpsOptions
+});
+
+// Security headers
+fastify.register(helmet, {
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://accounts.google.com", "https://apis.google.com"],
+      imgSrc: ["'self'", "data:", "https:", "https://accounts.google.com"],
+      connectSrc: ["'self'", "ws:", "wss:", "https://accounts.google.com", "https://apis.google.com"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["https://accounts.google.com", "https://apis.google.com"],
+    },
+  },
+});
+
+// Rate limiting
+fastify.register(rateLimit, {
+  max: 100, // requests
+  timeWindow: '1 minute'
+});
+
+// CORS with restricted origins
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://localhost:5173',
+  'http://localhost:3000',
+  'https://localhost:3000'
+];
 
 fastify.register(cors, {
-  origin: '*',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, file:// protocol, etc.)
+    if (!origin) return callback(null, true);
+    
+    // Allow localhost origins (for development)
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return callback(null, true);
+    }
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'), false);
+    }
+  },
+  credentials: true,
+  // Allow all headers for preflight requests
+  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization']
 });
 
 fastify.register(multipart);
@@ -56,13 +116,13 @@ const clients: Record<string, WS[]> = {};
 const start = async () => {
   try {
     await fastify.listen({ port: 3001, host: "0.0.0.0" });
-    fastify.log.info("HTTP server listening on port 3001");
+    fastify.log.info("HTTPS server listening on port 3001");
 
-    // --- WebSocket server ---
+    // --- WebSocket server with WSS support ---
     const wss = new WebSocketServer({ server: fastify.server, path: "/ws" });
 
     wss.on("connection", (ws: WS, req) => {
-      const url = new URL(req.url!, `http://${req.headers.host}`);
+      const url = new URL(req.url!, `https://${req.headers.host}`);
       const userId = url.searchParams.get("userId");
       if (!userId) {
         ws.close();

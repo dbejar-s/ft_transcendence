@@ -129,7 +129,7 @@ export default function Game() {
     }
 
     try {
-      const backendUrl = 'http://localhost:3001';
+      const backendUrl = 'https://localhost:3001';
       const res = await fetch(`${backendUrl}/api/users/${player.id}/matches/start`, { method: "POST" });
 
       if (!res.ok) {
@@ -260,7 +260,7 @@ export default function Game() {
 
       console.log('Saving match result:', matchData);
 
-      const response = await fetch('http://localhost:3001/api/matches', {
+      const response = await fetch('https://localhost:3001/api/matches', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

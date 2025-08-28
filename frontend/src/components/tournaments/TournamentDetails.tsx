@@ -19,7 +19,7 @@ export default function TournamentDetails({ tournamentId }: TournamentDetailsPro
   const [matches, setMatches] = useState<Match[]>([]);
 
   useEffect(() => {
-    fetch(`http://localhost:3001/api/tournaments/${tournamentId}/matches`)
+    fetch(`https://localhost:3001/api/tournaments/${tournamentId}/matches`)
       .then(res => res.json())
       .then(setMatches);
   }, [tournamentId]);

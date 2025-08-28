@@ -6,6 +6,13 @@ import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { Buffer } from 'buffer';
+import { 
+    validateUserRegistration, 
+    validateUserLogin, 
+    validate2FARequest,
+    sanitizeEmail,
+    sanitizeUsername 
+} from '../utils/validation';
 
 const GOOGLE_CLIENT_ID = process.env.VITE_GOOGLE_CLIENT_ID; // You need to create this in your .env
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
@@ -27,26 +34,43 @@ export async function authRoutes(fastify: FastifyInstance) {
     fastify.post('/register', async (request: FastifyRequest, reply: FastifyReply) => {
         const { email, username, password } = request.body as any;
 
-        if (!email || !username || !password) {
-            return reply.status(400).send({ message: 'Email, username, and password are required' });
+        // Input validation
+        const validation = validateUserRegistration({ email, username, password });
+        if (!validation.isValid) {
+            return reply.status(400).send({ message: validation.errors.join(', ') });
         }
+
+        // Sanitize inputs
+        const sanitizedEmail = sanitizeEmail(email);
+        const sanitizedUsername = sanitizeUsername(username);
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
         try {
             const stmt = db.prepare('INSERT INTO users (id, email, username, password, avatar) VALUES (?, ?, ?, ?, ?)');
             const id = crypto.randomUUID();
-            stmt.run(id, email, username, hashedPassword, DEFAULT_AVATAR);
+
+            //**** const defaultAvatar = '/uploads/default-avatar.png'; // Make sure you have a default avatar image
+            stmt.run(id, sanitizedEmail, sanitizedUsername, hashedPassword, DEFAULT_AVATAR);
+
+            //**** stmt.run(id, email, username, hashedPassword, DEFAULT_AVATAR);
+
             
             // Generate JWT immediately for new users (no 2FA required for registration)
-            const token = jwt.sign({ id, email }, process.env.JWT_SECRET as string, { expiresIn: '1h' });
+            const token = jwt.sign({ id, email: sanitizedEmail }, process.env.JWT_SECRET as string, { expiresIn: '1h' });
             
             // Return user info (without password) and token
             const newUser = {
                 id,
-                email,
-                username,
+
+                email: sanitizedEmail,
+                username: sanitizedUsername,
+               //**** avatar: defaultAvatar,
+
+               //**** email,
+               //**** username,
                 avatar: DEFAULT_AVATAR,
+
                 language: 'en' // default language
             };
             
@@ -67,12 +91,17 @@ export async function authRoutes(fastify: FastifyInstance) {
     fastify.post('/login', async (request: FastifyRequest, reply: FastifyReply) => {
         const { email, password } = request.body as any;
 
-        if (!email || !password) {
-            return reply.status(400).send({ message: 'Email and password are required' });
+        // Input validation
+        const validation = validateUserLogin({ email, password });
+        if (!validation.isValid) {
+            return reply.status(400).send({ message: validation.errors.join(', ') });
         }
+
+        // Sanitize inputs
+        const sanitizedEmail = sanitizeEmail(email);
         
         const stmt = db.prepare('SELECT * FROM users WHERE email = ?');
-        const user = stmt.get(email) as any;
+        const user = stmt.get(sanitizedEmail) as any;
 
         if (!user) {
             return reply.status(401).send({ message: 'Invalid credentials' });
@@ -104,27 +133,38 @@ export async function authRoutes(fastify: FastifyInstance) {
     // 2FA Verification endpoint
     fastify.post('/verify-2fa', async (request: FastifyRequest, reply: FastifyReply) => {
         const { userId, code } = request.body as any;
-        if (!userId || !code) {
-            return reply.status(400).send({ message: 'User ID and 2FA code are required' });
+        
+        // Input validation
+        const validation = validate2FARequest({ userId, code });
+        if (!validation.isValid) {
+            return reply.status(400).send({ message: validation.errors.join(', ') });
         }
+
         const stmt = db.prepare('SELECT * FROM users WHERE id = ?');
         const user = stmt.get(userId) as any;
+        
         if (!user || !user.twofa_enabled) {
             return reply.status(401).send({ message: '2FA not enabled or user not found' });
         }
+        
         if (!user.twofa_code || !user.twofa_expires) {
             return reply.status(401).send({ message: 'No 2FA code found. Please login again.' });
         }
+        
         if (user.twofa_code !== code) {
             return reply.status(401).send({ message: 'Invalid 2FA code' });
         }
+        
         if (new Date() > new Date(user.twofa_expires)) {
             return reply.status(401).send({ message: '2FA code expired. Please login again.' });
         }
+        
         // Clear 2FA code after successful verification
         db.prepare('UPDATE users SET twofa_code = NULL, twofa_expires = NULL WHERE id = ?').run(userId);
+        
         // Issue JWT
         const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET as string, { expiresIn: '1h' });
+        
         // Return user info (without password) so frontend can set context
         const { password, ...userWithoutPassword } = user;
         reply.send({ message: '2FA verified. Login successful.', token, user: userWithoutPassword });

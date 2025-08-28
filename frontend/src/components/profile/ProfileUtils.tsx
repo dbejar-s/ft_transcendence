@@ -81,7 +81,7 @@ export const submitProfile = async (
       formData.append("avatarUrl", avatar)
     }
 
-    const res = await fetch("http://localhost:3001/api/users/complete-profile", {
+    const res = await fetch("https://localhost:3001/api/users/complete-profile", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${localStorage.getItem("token")}`

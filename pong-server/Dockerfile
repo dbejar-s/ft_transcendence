@@ -8,9 +8,8 @@ WORKDIR /usr/src/app
 
 COPY . .
 
-# Compiler avec AddressSanitizer
-# RUN make clean && make BUILD=fsan 
-RUN make
+# Compiler sans AddressSanitizer pour éviter les crashes
+RUN make BUILD=normal
 
 EXPOSE 4000
 

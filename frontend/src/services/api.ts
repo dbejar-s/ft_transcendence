@@ -1,6 +1,6 @@
 // This file centralizes all our API calls.
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://localhost:3001';
 
 // A helper function for making fetch requests
 async function apiFetch(endpoint: string, options: RequestInit = {}) {
@@ -29,7 +29,11 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
     });
   }
 
-  const response = await fetch(url, { ...options, headers });
+  const response = await fetch(url, { 
+    ...options, 
+    headers,
+    credentials: 'include' // Include credentials for CORS requests
+  });
 
   if (isAuthEndpoint || isCurrentUserEndpoint) {
     console.log('apiFetch response:', {
@@ -101,6 +105,7 @@ export const userService = {
           ...(token && { 'Authorization': `Bearer ${token}` }),
         },
         body: formData, // Note: Don't set Content-Type for FormData, let browser set it
+        credentials: 'include' // Include credentials for CORS requests
     });
     
     if (!response.ok) {

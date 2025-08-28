@@ -55,7 +55,7 @@ export default function TournamentBracket({ tournamentId, onClose }: TournamentB
   const fetchBracketData = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:3001/api/tournaments/${tournamentId}/bracket`);
+      const response = await fetch(`https://localhost:3001/api/tournaments/${tournamentId}/bracket`);
       const data = await response.json();
       
       setTournament(data.tournament);
@@ -67,7 +67,7 @@ export default function TournamentBracket({ tournamentId, onClose }: TournamentB
       
       // If tournament is finished, fetch all matches
       if (data.tournament?.status === 'finished') {
-        const allMatchesResponse = await fetch(`http://localhost:3001/api/tournaments/${tournamentId}`);
+        const allMatchesResponse = await fetch(`https://localhost:3001/api/tournaments/${tournamentId}`);
         const tournamentData = await allMatchesResponse.json();
         setAllMatches(tournamentData.matches || []);
       }
@@ -142,7 +142,7 @@ export default function TournamentBracket({ tournamentId, onClose }: TournamentB
 
 	try {
 		const response = await fetch(
-		`http://localhost:3001/api/tournaments/${tournamentId}/matches/${matchId}/result`,
+		`https://localhost:3001/api/tournaments/${tournamentId}/matches/${matchId}/result`,
 		{
 			method: "POST",
 			headers: {
