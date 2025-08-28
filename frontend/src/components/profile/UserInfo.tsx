@@ -29,11 +29,6 @@ export default function UserInfo({ initialUser, onProfileUpdated }: UserInfoProp
   const [languageValue, setLanguageValue] = useState(initialUser.language)
   const [isEditingLanguage, setIsEditingLanguage] = useState(false)
 
-  // Debug: log predefined avatars
-  console.log('🎭 Predefined avatars:', predefinedAvatars)
-  console.log('👤 Initial user avatar:', initialUser.avatar)
-  console.log('📂 Current avatarFile:', avatarFile)
-  console.log('🖼️ Current avatarPreview:', avatarPreview)
 
   useEffect(() => {
     if (initialUser) {

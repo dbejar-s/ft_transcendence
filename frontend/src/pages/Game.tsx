@@ -52,7 +52,6 @@ export default function Game() {
 
   // Function to handle score updates from GameDisplay
   const handleScoreUpdate = (p1Score: number, p2Score: number) => {
-    console.debug(`[PARENT SCORE UPDATE] P1: ${p1Score}, P2: ${p2Score}`);
 	// Invert scores because wsPlayer1 is player 2 and wsPlayer2 is player 1
     setScores({ p2: p1Score, p1: p2Score });
   };
@@ -77,12 +76,7 @@ export default function Game() {
 
 	const view = new DataView(event.data);
 	const type = view.getUint8(1);
-	const length = view.getUint16(2, false); // Big endian
 	const bodyOffset = 4;
-
-	console.debug(
-		`[WS MESSAGE] Type: ${type}, Length: ${length}, Total buffer size: ${event.data.byteLength}`
-	);
 
 	if (type === 2) {
 		// GAME OVER message
@@ -96,10 +90,6 @@ export default function Game() {
 		// According to MESSAGE-FORMAT.md v1: P --- F --- 2 x S
 		const finalP1Score = view.getUint8(bodyOffset + 2);
 		const finalP2Score = view.getUint8(bodyOffset + 3);
-
-		console.debug(
-		`[GAME OVER] Winner: ${winnerId}, Final scores P1: ${finalP1Score}, P2: ${finalP2Score}`
-		);
 
 		const gameOverData = {
 		winner,

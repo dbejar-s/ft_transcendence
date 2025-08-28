@@ -44,10 +44,21 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   // A login function to centralize state and localStorage updates
   const login = (playerData: Player) => {
-    setPlayerState(playerData);
-    setIsLoggedIn(true);
-    localStorage.setItem('player', JSON.stringify(playerData));
-  i18n.changeLanguage(playerData.language);
+    try {
+      // Validate required fields
+      if (!playerData || !playerData.id || !playerData.email || !playerData.username) {
+        console.error('Invalid player data provided to login:', playerData);
+        return;
+      }
+      
+      setPlayerState(playerData);
+      setIsLoggedIn(true);
+      localStorage.setItem('player', JSON.stringify(playerData));
+      i18n.changeLanguage(playerData.language);
+      console.log('Player login successful:', { id: playerData.id, email: playerData.email });
+    } catch (error) {
+      console.error('Error in login function:', error);
+    }
   };
 
   // A logout function

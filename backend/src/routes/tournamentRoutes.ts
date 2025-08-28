@@ -388,8 +388,6 @@ export async function tournamentRoutes(fastify: FastifyInstance) {
         `).all(id) as Participant[];
       }
 
-      console.log(`Participants for tournament ${id}:`, participants); // Debug log
-
       // Calculate current standings
       const standings = calculateStandings(id, participants);
 
@@ -464,44 +462,6 @@ export async function tournamentRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // temporary DEBUG
-  fastify.post('/debug/generate-token', (request: FastifyRequest, reply: FastifyReply) => {
-    const { userId, username } = request.body as { userId: string; username: string };
-    
-    if (!userId || !username) {
-      return reply.status(400).send({ message: 'userId and username required' });
-    }
-    
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      return reply.status(500).send({ message: 'JWT_SECRET not configured' });
-    }
-    
-    const payload = {
-      id: userId,
-      username: username,
-      email: `${username}@test.com`
-    };
-    
-    const token = jwt.sign(payload, jwtSecret, { expiresIn: '24h' });
-    
-    reply.send({
-      message: 'Token generated',
-      token: token,
-      payload: payload,
-      expiresIn: '24h'
-    });
-  });
-
-  // DEBUG
-  fastify.get('/debug/token', { preHandler: [jwtMiddleware] }, (request: FastifyRequest, reply: FastifyReply) => {
-    reply.send({ 
-      message: 'Token valid', 
-      user: request.user,
-      timestamp: new Date().toISOString()
-    });
-  });
-}
 
 // Helper functions
 function getCurrentRound(tournamentId: string): number {
@@ -860,4 +820,5 @@ function updateUserStats(userId: string, tournamentId: string, isWinner: boolean
   } catch (error) {
     console.error('Error updating user stats:', error);
   }
+}
 }

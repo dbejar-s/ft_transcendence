@@ -70,8 +70,6 @@ export default function TournamentBracket({ tournamentId, onClose }: TournamentB
         setAllMatches(tournamentData.matches || []);
       }
       
-      console.log('Bracket data received:', data);
-      console.log('Participants:', data.participants); // Debug log
     } catch (error) {
       console.error('Error fetching bracket data:', error);
     } finally {
@@ -410,10 +408,8 @@ export default function TournamentBracket({ tournamentId, onClose }: TournamentB
             )}
           </div>
 
-          {/* Participants Section - Affichage simplifié */}
+          {/* Participants Section */}
           {renderParticipants()}
-
-          {/* Supprimer la section debug temporaire */}
 
           {/* Final Standings - Show first for finished tournaments */}
           {tournament?.status === 'finished' && standings.length > 0 && (

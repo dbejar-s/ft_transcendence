@@ -50,7 +50,6 @@ export default function GameDisplay({ wsP1, wsP2, onScoreUpdate }: GameDisplayPr
           const ball_x_ratio = view.getFloat32(12, true);
           const ball_y_ratio = view.getFloat32(16, true);
 
-          console.debug(`[STATE UPDATE] Ball: (${ball_x_ratio.toFixed(2)}, ${ball_y_ratio.toFixed(2)}), P1: ${p1_pos_ratio.toFixed(2)}, P2: ${p2_pos_ratio.toFixed(2)}`);
           
           // Extract scores from STATE UPDATE message
           // According to MESSAGE-FORMAT.md: 4 x 1 --- 4 x 2 --- 8 x B --- 2 x S
@@ -59,7 +58,6 @@ export default function GameDisplay({ wsP1, wsP2, onScoreUpdate }: GameDisplayPr
             const scoreOffset = 4 + 16; // header (4) + positions (4+4+8 = 16)
             const p1Score = view.getUint8(scoreOffset);
             const p2Score = view.getUint8(scoreOffset + 1);
-            console.debug(`[SCORES FROM STATE] P1: ${p1Score}, P2: ${p2Score}`);
             
             // Send scores to parent component
             if (onScoreUpdate) {
@@ -109,9 +107,6 @@ export default function GameDisplay({ wsP1, wsP2, onScoreUpdate }: GameDisplayPr
         view.setUint8(2, 0); // High byte of length (big-endian 1)
         view.setUint8(3, 1); // Low byte of length
         view.setUint8(4, direction);
-        // Debug: print buffer bytes before sending
-        const bytes = Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join(' ');
-        console.debug(`[PADDLE MOVE] Sending buffer: ${bytes}, direction=${direction}`);
         ws.send(buffer);
       }
     };

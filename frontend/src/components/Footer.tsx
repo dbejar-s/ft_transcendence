@@ -2,7 +2,6 @@ import { useTranslation } from "react-i18next"
 import { Github } from "lucide-react"
 
 const teamMembers = [
-  { name: "David", github: "https://github.com/davidbarren" },
   { name: "David", github: "https://github.com/dbejar-s" },
   { name: "Ilmari", github: "https://github.com/ilmu23" },
   { name: "Juliette", github: "https://github.com/juliettemtte" },

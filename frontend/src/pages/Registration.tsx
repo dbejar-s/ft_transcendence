@@ -51,15 +51,20 @@ export default function Register() {
       const googleUser = result.user
 
       const googleUserData = {
-        token: await googleUser.getIdToken(),
-        email: googleUser.email,
-        name: googleUser.displayName,
-        sub: googleUser.uid,
-        picture: googleUser.photoURL,
+        credential: await googleUser.getIdToken(),
       }
 
-      const { user } = await authService.handleGoogleLogin(googleUserData)
-      login(user)
+      const userData = await authService.handleGoogleLogin(googleUserData)
+      
+      // Store the JWT token
+      if (userData && userData.token) {
+        localStorage.setItem('token', userData.token);
+      } else {
+        console.error('No token received from backend!', userData);
+      }
+      
+      // Login with user data
+      login(userData.user)
       navigate("/")
     } catch (error: any) {
       console.error("Google Sign-in failed:", error)

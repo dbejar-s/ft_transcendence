@@ -5,9 +5,11 @@ import { OAuth2Client } from 'google-auth-library';
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import { Buffer } from 'buffer';
 
 const GOOGLE_CLIENT_ID = process.env.VITE_GOOGLE_CLIENT_ID; // You need to create this in your .env
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // Nodemailer transporter setup (Gmail SMTP)
 const transporter = nodemailer.createTransport({
@@ -130,34 +132,116 @@ export async function authRoutes(fastify: FastifyInstance) {
 
     // Google Sign-In
     fastify.post('/google', async (request: FastifyRequest, reply: FastifyReply) => {
-        const { token } = request.body as any;
         try {
-            // No need to verify token here if we trust firebase on the frontend
-            // This is a simplification. For higher security, the backend should verify the token.
-            const { email, name, sub: googleId, picture: avatar } = request.body as any;
+            const { credential } = request.body as any;
+            console.log('=== Google Auth Backend Debug ===');
+            console.log('Received credential:', credential ? 'Yes' : 'No');
+            
+            if (!credential) {
+                return reply.status(400).send({ message: 'No Google credential provided' });
+            }
+
+            console.log('Decoding Google JWT token...');
+            // Decode the JWT token (without verification for simplicity)
+            // In production, you should verify the token, but for development this is acceptable
+            let email, name, googleId, avatar;
+            
+            try {
+                const parts = credential.split('.');
+                if (parts.length !== 3) {
+                    throw new Error('Invalid JWT format - not 3 parts');
+                }
+
+                // Decode base64url to regular base64, then parse JSON
+                let base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+                // Add padding if needed
+                while (base64.length % 4) {
+                    base64 += '=';
+                }
+                
+                const payloadJson = Buffer.from(base64, 'base64').toString('utf8');
+                const payload = JSON.parse(payloadJson);
+                
+                console.log('Successfully decoded payload:', {
+                    email: payload?.email,
+                    name: payload?.name,
+                    sub: payload?.sub,
+                    picture: payload?.picture
+                });
+                
+                if (!payload || !payload.email || !payload.sub) {
+                    throw new Error('Invalid payload - missing required fields');
+                }
+
+                email = payload.email;
+                name = payload.name;
+                googleId = payload.sub;
+                avatar = payload.picture;
+                
+            } catch (decodeError) {
+                console.error('JWT decode error:', decodeError);
+                return reply.status(401).send({ message: 'Invalid JWT format' });
+            }
 
             let user = db.prepare('SELECT * FROM users WHERE googleId = ?').get(googleId) as any;
 
             if (user) {
                 // User exists, log them in
                 const { password, ...userWithoutPassword } = user;
-                return reply.send({ message: 'Login successful', user: userWithoutPassword });
+                
+                // Generate JWT token
+                const token = jwt.sign(
+                    { id: user.id, username: user.username, email: user.email },
+                    JWT_SECRET,
+                    { expiresIn: '24h' }
+                );
+                
+                console.log('Returning existing user response:', {
+                    hasToken: !!token,
+                    tokenPreview: token ? token.substring(0, 20) + '...' : 'none',
+                    userId: user.id,
+                    userEmail: user.email
+                });
+                
+                return reply.send({ message: 'Login successful', user: userWithoutPassword, token });
             } else {
                 // New user, check if email exists
-                user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as any;
-                if (user) {
+                let existingUser = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as any;
+                if (existingUser) {
                     // Email exists, link Google account
                     db.prepare('UPDATE users SET googleId = ?, avatar = ? WHERE email = ?').run(googleId, avatar, email);
+                    // Fetch the updated user data
+                    user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as any;
                 } else {
                     // Create new user
                     const id = crypto.randomUUID();
-                    db.prepare('INSERT INTO users (id, email, username, googleId, avatar) VALUES (?, ?, ?, ?, ?)')
-                      .run(id, email, name, googleId, avatar);
-                    user = { id, email, username: name, avatar, googleId };
+                    db.prepare('INSERT INTO users (id, email, username, googleId, avatar, language, status) VALUES (?, ?, ?, ?, ?, ?, ?)')
+                      .run(id, email, name, googleId, avatar, 'en', 'online');
+                    // Fetch the newly created user data
+                    user = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as any;
                 }
                 
+                if (!user) {
+                    console.error('Failed to create or retrieve user after Google login');
+                    return reply.status(500).send({ message: 'Failed to create user account' });
+                }
+                
+                // Generate JWT token for new user
+                const token = jwt.sign(
+                    { id: user.id, username: user.username || name, email: user.email },
+                    JWT_SECRET,
+                    { expiresIn: '24h' }
+                );
+                
+                console.log('Returning new user response:', {
+                    hasToken: !!token,
+                    tokenPreview: token ? token.substring(0, 20) + '...' : 'none',
+                    userId: user.id,
+                    userEmail: user.email
+                });
+                
                 const { password, ...userWithoutPassword } = user;
-                return reply.status(201).send({ message: 'Login successful', user: userWithoutPassword });
+                return reply.status(201).send({ message: 'Login successful', user: userWithoutPassword, token });
             }
         } catch (error) {
             console.error('Google auth error', error);

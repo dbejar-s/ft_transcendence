@@ -20,18 +20,85 @@ export default function FriendStatistics({ friendId }: Props) {
     currentStreak: number
     modes: { mode: string; games: number; wins: number }[]
   } | null>(null)
+  
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     console.log('Fetching friend stats for user:', friendId);
-    statisticsService.getPublicUserStats(friendId)
+    setLoading(true);
+    setError(null);
+    
+    statisticsService.getUserStats(friendId)
       .then(data => {
         console.log('Friend stats data received:', data);
+        console.log('Modes data:', data?.modes);
+        console.log('Total games:', data?.totalGames);
         setStatsData(data);
+        setError(null);
       })
       .catch(error => {
         console.error('Error fetching friend stats:', error);
+        console.error('Error details:', error.message, error.status);
+        setError(error.message || 'Failed to load statistics');
+        setStatsData(null);
+      })
+      .finally(() => {
+        setLoading(false);
       });
   }, [friendId])
+
+  // Add event listener for when a match is completed
+  useEffect(() => {
+    const handleMatchCompleted = () => {
+      console.log('Match completed event received, refreshing friend statistics for user:', friendId);
+      setLoading(true);
+      statisticsService.getUserStats(friendId)
+        .then(data => {
+          console.log('Updated friend stats data received:', data);
+          setStatsData(data);
+          setError(null);
+        })
+        .catch(error => {
+          console.error('Error refreshing friend stats after match:', error);
+          setError(error.message || 'Failed to refresh statistics');
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }
+
+    window.addEventListener('matchCompleted', handleMatchCompleted)
+    return () => window.removeEventListener('matchCompleted', handleMatchCompleted)
+  }, [friendId])
+
+  if (loading) {
+    return (
+      <div className="bg-[#2a2a27] rounded-lg p-6 mt-6">
+        <h3 className="text-sm font-press font-bold text-[#FFFACD] mb-4 flex items-center gap-2">
+          <BarChart3 size={20} />
+          {t("performanceByGameMode") || "Performance by Game Mode"}
+        </h3>
+        <p className="text-[#FFFACD] opacity-70 text-center">
+          {t("loading") || "Loading..."}
+        </p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-[#2a2a27] rounded-lg p-6 mt-6">
+        <h3 className="text-sm font-press font-bold text-[#FFFACD] mb-4 flex items-center gap-2">
+          <BarChart3 size={20} />
+          {t("performanceByGameMode") || "Performance by Game Mode"}
+        </h3>
+        <p className="text-[#FFFACD] opacity-70 text-center text-red-400">
+          {t("errorLoadingStats") || "Error loading statistics"}: {error}
+        </p>
+      </div>
+    )
+  }
 
   if (!statsData || statsData.totalGames === 0) {
     return (
@@ -42,6 +109,20 @@ export default function FriendStatistics({ friendId }: Props) {
         </h3>
         <p className="text-[#FFFACD] opacity-70 text-center">
           {t("noGamesPlayed") || "No games played yet"}
+        </p>
+      </div>
+    )
+  }
+
+  if (!statsData.modes || statsData.modes.length === 0) {
+    return (
+      <div className="bg-[#2a2a27] rounded-lg p-6 mt-6">
+        <h3 className="text-sm font-press font-bold text-[#FFFACD] mb-4 flex items-center gap-2">
+          <BarChart3 size={20} />
+          {t("performanceByGameMode") || "Performance by Game Mode"}
+        </h3>
+        <p className="text-[#FFFACD] opacity-70 text-center">
+          {t("noModeData") || "No game mode data available"}
         </p>
       </div>
     )

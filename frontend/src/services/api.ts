@@ -4,24 +4,61 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001
 
 // A helper function for making fetch requests
 async function apiFetch(endpoint: string, options: RequestInit = {}) {
-  // ... (the rest of the function is unchanged)
   const url = `${API_BASE_URL}${endpoint}`;
+  
+  // Get token from localStorage and add to headers if available
+  const token = localStorage.getItem('token');
   
   const headers = {
     'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` }),
     ...options.headers,
   };
 
+  // Only log for authentication endpoints to reduce noise
+  const isAuthEndpoint = endpoint.includes('/auth/');
+  const isCurrentUserEndpoint = endpoint.includes('/users/current');
+  
+  if (isAuthEndpoint || isCurrentUserEndpoint) {
+    console.log('apiFetch called:', {
+      url,
+      method: options.method || 'GET',
+      hasToken: !!token,
+      tokenPreview: token ? token.substring(0, 30) + '...' : 'NONE',
+      headers: { ...headers, Authorization: token ? `Bearer ${token.substring(0, 20)}...` : 'MISSING' }
+    });
+  }
+
   const response = await fetch(url, { ...options, headers });
+
+  if (isAuthEndpoint || isCurrentUserEndpoint) {
+    console.log('apiFetch response:', {
+      url,
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok,
+      contentType: response.headers.get('content-type')
+    });
+  }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ message: 'An unknown error occurred' }));
+    if (isAuthEndpoint || isCurrentUserEndpoint) {
+      console.error('apiFetch error:', errorData);
+    }
     throw new Error(errorData.message || 'API request failed');
   }
   
   const contentType = response.headers.get('content-type');
   if (contentType && contentType.includes('application/json')) {
-    return response.json();
+    const jsonResponse = await response.json();
+    if (isAuthEndpoint || isCurrentUserEndpoint) {
+      console.log('apiFetch JSON response:', jsonResponse);
+    }
+    return jsonResponse;
+  }
+  if (isAuthEndpoint || isCurrentUserEndpoint) {
+    console.log('apiFetch non-JSON response');
   }
   return null;
 }
@@ -41,9 +78,9 @@ export const authService = {
     method: 'POST',
     body: JSON.stringify({ email, username, password }),
   }),
-  handleGoogleLogin: (googleUserData: any) => apiFetch('/api/auth/google', {
+  handleGoogleLogin: (data: { credential: string }) => apiFetch('/api/auth/google', {
     method: 'POST',
-    body: JSON.stringify(googleUserData),
+    body: JSON.stringify(data),
   }),
   // This is a duplicate, let's remove it for clarity, handleGoogleLogin is enough
   // loginWithGoogle: (googleUserData: any) => apiFetch('/api/auth/google', {
@@ -57,9 +94,13 @@ export const userService = {
   getProfile: (userId: string) => apiFetch(`/api/users/${userId}`),
   // FIXED: This function now correctly parses error messages from the backend
   updateProfile: async (userId: string, formData: FormData) => {
+    const token = localStorage.getItem('token');
     const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
         method: 'PUT',
-        body: formData,
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+        body: formData, // Note: Don't set Content-Type for FormData, let browser set it
     });
     
     if (!response.ok) {
@@ -93,20 +134,10 @@ export const matchHistoryService = {
 
 export const statisticsService = {
   getUserStats: (userId: string) => {
-    const token = localStorage.getItem('token');
-    return apiFetch(`/api/stats/${userId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
+    return apiFetch(`/api/stats/${userId}`);
   },
   
   getPublicUserStats: (userId: string) => {
-    const token = localStorage.getItem('token');
-    return apiFetch(`/api/stats/public/${userId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
+    return apiFetch(`/api/stats/public/${userId}`);
   },
 }
