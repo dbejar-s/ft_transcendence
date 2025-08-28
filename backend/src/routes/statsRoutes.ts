@@ -49,12 +49,11 @@ export async function statsRoutes(fastify: FastifyInstance) {
         SELECT gameMode,
                CASE 
                  WHEN winnerId = ? THEN 'win'
-                 WHEN winnerId IS NULL THEN 'draw'
                  ELSE 'loss'
                END as result
         FROM matches
         WHERE player1Id = ? OR player2Id = ?
-      `).all(userId, userId, userId) as { gameMode: string; result: 'win' | 'loss' | 'draw' }[]
+      `).all(userId, userId, userId) as { gameMode: string; result: 'win' | 'loss'}[]
 
       const modeMap = new Map<string, { games: number; wins: number }>()
       for (const row of modeRows) {

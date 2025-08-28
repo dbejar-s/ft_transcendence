@@ -10,36 +10,47 @@ export default function MatchHistory() {
   const [gameModeFilter, setGameModeFilter] = useState<"all" | "Casual" | "Tournament">("all")
   const { t } = useTranslation()
 
-  useEffect(() => {
-    const fetchMatches = async () => {
-      try {
-        const response = await fetch('http://localhost:3001/api/matches', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        })
-        const data = await response.json()
-        
-        const transformedMatches = data.map((match: any) => ({
-          id: match.id,
-          opponent: match.opponent,
-          opponentAvatar: match.opponentAvatar || '/default-avatar.png',
-          result: match.result.toLowerCase() as "win" | "loss",
-          score: `${match.player1Score}-${match.player2Score}`,
-          gameMode: match.gameMode,
-          duration: calculateDuration(match.startedAt, match.endedAt),
-          date: match.playedAt
-        }))
-        
-        setFetchedMatches(transformedMatches)
-      } catch (error) {
-        console.error("Error fetching matches:", error)
-      } finally {
-        setLoading(false)
-      }
+  const fetchMatches = async () => {
+    try {
+      const response = await fetch('http://localhost:3001/api/matches', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+      const data = await response.json()
+      
+      const transformedMatches = data.map((match: any) => ({
+        id: match.id,
+        opponent: match.opponent,
+        opponentAvatar: match.opponentAvatar || '/default-avatar.png',
+        result: match.result.toLowerCase() as "win" | "loss",
+        score: `${match.player1Score}-${match.player2Score}`,
+        gameMode: match.gameMode,
+        duration: calculateDuration(match.startedAt, match.endedAt),
+        date: match.playedAt
+      }))
+      
+      setFetchedMatches(transformedMatches)
+    } catch (error) {
+      console.error("Error fetching matches:", error)
+    } finally {
+      setLoading(false)
     }
-    
+  }
+
+  useEffect(() => {
     fetchMatches()
+  }, [])
+
+  // Add event listener for when a match is completed
+  useEffect(() => {
+    const handleMatchCompleted = () => {
+      console.log('Match completed, refreshing match history...')
+      fetchMatches()
+    }
+
+    window.addEventListener('matchCompleted', handleMatchCompleted)
+    return () => window.removeEventListener('matchCompleted', handleMatchCompleted)
   }, [])
 
   const filteredMatches = fetchedMatches.filter((match) => {

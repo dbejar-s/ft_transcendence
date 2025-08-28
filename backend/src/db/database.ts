@@ -49,7 +49,7 @@ function initializeDatabase() {
     CREATE TABLE IF NOT EXISTS matches (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       player1Id TEXT NOT NULL,
-      player2Id TEXT NOT NULL,
+      player2Id TEXT,
       player1Score INTEGER NOT NULL,
       player2Score INTEGER NOT NULL,
       winnerId TEXT,
@@ -69,8 +69,6 @@ function initializeDatabase() {
       status TEXT DEFAULT 'registration', -- registration, ongoing, finished
       phase TEXT DEFAULT 'registration',
       maxPlayers INTEGER DEFAULT 16,
-      startDate DATETIME,
-      endDate DATETIME,
       winnerId TEXT,
       FOREIGN KEY (winnerId) REFERENCES users(id)
     );
@@ -79,7 +77,7 @@ function initializeDatabase() {
   const createTournamentParticipantsTable = `
     CREATE TABLE IF NOT EXISTS tournament_participants (
       tournamentId INTEGER NOT NULL,
-      userId TEXT NOT NULL,
+      userId TEXT,
       status TEXT DEFAULT 'registered', -- registered, eliminated, winner
       PRIMARY KEY (tournamentId, userId),
       FOREIGN KEY (tournamentId) REFERENCES tournaments(id),
@@ -92,7 +90,7 @@ function initializeDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       tournamentId INTEGER NOT NULL,
       player1Id TEXT NOT NULL,
-      player2Id TEXT NOT NULL,
+      player2Id TEXT,
       player1Score INTEGER DEFAULT 0,
       player2Score INTEGER DEFAULT 0,
       winnerId TEXT,
@@ -109,11 +107,60 @@ function initializeDatabase() {
 
   // Create all tables
   db.exec(createUserTable);
-  db.exec(createFriendsTable);
   db.exec(createMatchesTable);
   db.exec(createTournamentsTable);
   db.exec(createTournamentParticipantsTable);
   db.exec(createTournamentMatchesTable);
+  db.exec(createFriendsTable);
+
+  // Migration: Update matches table to allow NULL player2Id for casual games
+  try {
+    // Check if the table has the old schema with NOT NULL constraint
+    const tableInfo = db.prepare("PRAGMA table_info(matches)").all() as Array<{
+      cid: number;
+      name: string;
+      type: string;
+      notnull: number;
+      dflt_value: any;
+      pk: number;
+    }>;
+    const player2IdColumn = tableInfo.find((col) => col.name === 'player2Id');
+    
+    if (player2IdColumn && player2IdColumn.notnull === 1) {
+      console.log('Migrating matches table to allow NULL player2Id...');
+      
+      // Step 1: Create new table with correct schema
+      db.exec(`
+        CREATE TABLE matches_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          player1Id TEXT NOT NULL,
+          player2Id TEXT,
+          player1Score INTEGER NOT NULL,
+          player2Score INTEGER NOT NULL,
+          winnerId TEXT,
+          gameMode TEXT NOT NULL,
+          playedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (player1Id) REFERENCES users(id),
+          FOREIGN KEY (player2Id) REFERENCES users(id),
+          FOREIGN KEY (winnerId) REFERENCES users(id)
+        )
+      `);
+      
+      // Step 2: Copy data from old table
+      db.exec(`
+        INSERT INTO matches_new (id, player1Id, player2Id, player1Score, player2Score, winnerId, gameMode, playedAt)
+        SELECT id, player1Id, player2Id, player1Score, player2Score, winnerId, gameMode, playedAt FROM matches
+      `);
+      
+      // Step 3: Drop old table and rename new table
+      db.exec('DROP TABLE matches');
+      db.exec('ALTER TABLE matches_new RENAME TO matches');
+      
+      console.log('Migration completed successfully');
+    }
+  } catch (error) {
+    console.error('Migration error:', error);
+  }
 
   // Add columns if they don't exist (migration for existing databases)
   try {
