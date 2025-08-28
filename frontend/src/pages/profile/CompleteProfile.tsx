@@ -5,6 +5,7 @@ import {
   predefinedAvatars,
   handleAvatarUpload,
   submitProfile,
+  DEFAULT_AVATAR,
   //validateField
 } from "../../components/profile/ProfileUtils"
 import type { AvatarType } from "../../components/profile/ProfileUtils"
@@ -14,12 +15,10 @@ export default function CompleteProfile() {
   const { t, i18n } = useTranslation()
   const { player } = usePlayer()
 
-  //const [username, setUsername] = useState(player?.username || "")
-  const [avatar, setAvatar] = useState<AvatarType>(null)
+  const [avatar, setAvatar] = useState<AvatarType>(DEFAULT_AVATAR) // Default to first predefined avatar
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [language, setLanguage] = useState(i18n.language || "en")
   const [error, setError] = useState<string | null>(null)
-  //const [usernameError, setUsernameError] = useState("")
   const [loading, setLoading] = useState(false)
 
   // google avatar 
@@ -30,17 +29,15 @@ export default function CompleteProfile() {
     }
   }, [player])
 
-  // const handleUsernameChange = (value: string) => {
-  //   setUsername(value)
-  //   validateField("username", value, setUsernameError, t)
-  // }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     // if (!validateField("username", username, setUsernameError, t)) return
 
-    const success = await submitProfile(player?.username!, language, avatar, setError, setLoading, t)
+    // Use default avatar if none selected
+    const finalAvatar = avatar || DEFAULT_AVATAR
+
+    const success = await submitProfile(player?.username!, language, finalAvatar, setError, setLoading, t)
     alert(t('signUpSuccess'));
     if (success) window.location.href = "/"
   }
@@ -48,7 +45,8 @@ export default function CompleteProfile() {
   const getDisplayAvatar = () => {
     if (previewUrl) return previewUrl
     if (typeof avatar === "string") return avatar
-    return null
+    // Return default avatar if none selected
+    return DEFAULT_AVATAR
   }
 
   return (
@@ -133,27 +131,6 @@ export default function CompleteProfile() {
               className="hidden"
             />
           </div>
-
-          {/* Username Field */}
-          {/* <div className="space-y-2 text-sm">
-            <div className="flex items-center gap-2">
-              <User size={20} className="text-[#FFFACD]" />
-              <label className="text-sm font-press font-semibold">{t("chooseUsername")}</label>
-            </div>
-            <input
-              type="text"
-              placeholder={t("chooseUsername")}
-              value={username}
-              onChange={(e) => handleUsernameChange(e.target.value)}
-              required
-              className={`w-full p-3 rounded-lg bg-[#FFFACD] text-[#20201d] placeholder-[#777] focus:outline-none font-press ${
-                usernameError
-                  ? "border-2 border-red-500 focus:ring-red-500"
-                  : "focus:ring-2 focus:ring-[#FFFACD]"
-              }`}
-            />
-            {usernameError && <p className="text-red-400 font-press">{usernameError}</p>}
-          </div> */}
 
           {/* Language Dropdown */}
           <div className="space-y-2 text-sm">

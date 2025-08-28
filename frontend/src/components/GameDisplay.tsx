@@ -12,8 +12,8 @@ type GameDisplayProps = {
   gameOver?: boolean;
 };
 
-const FIELD_WIDTH = 1000;
-const FIELD_HEIGHT = 600;
+const FIELD_WIDTH = 1020;
+const FIELD_HEIGHT = 620;
 const PADDLE_WIDTH = 20;
 const PADDLE_HEIGHT = 120;
 const BALL_SIZE = 20;
@@ -33,6 +33,9 @@ export default function GameDisplay({ wsP1, wsP2, onScoreUpdate, isPaused = fals
     p1PaddleY: FIELD_HEIGHT / 2,
     p2PaddleY: FIELD_HEIGHT / 2,
   });
+
+  // Track pressed keys to avoid multiple keydown events for same key
+  const [pressedKeys, setPressedKeys] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
@@ -121,79 +124,104 @@ export default function GameDisplay({ wsP1, wsP2, onScoreUpdate, isPaused = fals
       }
     };
 
-    // const sendPauseMessage = (ws: WebSocket | null) => {
-    //   if (ws && ws.readyState === WebSocket.OPEN) {
-    //     const buffer = new ArrayBuffer(4);
-    //     const view = new DataView(buffer);
-    //     const PROTOCOL_VERSION = 0;
-    //     const MESSAGE_TYPE_PAUSE = 1;
-    //     const bodyLength = 0;
-        
-    //     view.setUint8(0, PROTOCOL_VERSION);
-    //     view.setUint8(1, MESSAGE_TYPE_PAUSE);
-    //     view.setUint16(2, bodyLength, false); // Big Endian
-    //     ws.send(buffer);
-    //   }
-    // };
-
-    // const sendContinueMessage = (ws: WebSocket | null) => {
-    //   if (ws && ws.readyState === WebSocket.OPEN) {
-    //     const buffer = new ArrayBuffer(4);
-    //     const view = new DataView(buffer);
-    //     const PROTOCOL_VERSION = 0;
-    //     const MESSAGE_TYPE_START_CONTINUE = 0;
-    //     const bodyLength = 0;
-        
-    //     view.setUint8(0, PROTOCOL_VERSION);
-    //     view.setUint8(1, MESSAGE_TYPE_START_CONTINUE);
-    //     view.setUint16(2, bodyLength, false); // Big Endian
-    //     ws.send(buffer);
-    //   }
-    // };
-
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't send paddle moves if game is paused
       if (isPaused) return;
       
-      if (e.repeat) return;
-      const MOVE_DIRECTIONS = { DOWN: 1, UP: 2 };
-
-      switch (e.key) {
-        case "w": case "W":
+      // Prevent default to avoid browser behavior
+      e.preventDefault();
+      
+      // Ignore repeated keydown events for same key
+      const key = e.key.toLowerCase();
+      
+      // Check if key is already pressed to avoid duplicate commands
+      if (pressedKeys.has(key)) return;
+      
+      setPressedKeys((prevKeys: Set<string>) => {
+        const newKeys = new Set(prevKeys);
+        newKeys.add(key);
+        
+        // Send movement command based on currently pressed keys
+        const MOVE_DIRECTIONS = { DOWN: 1, UP: 2 };
+        
+        // Player 1 controls (W/S)
+        if (key === "w") {
           sendBinaryPaddleMove(wsP1, MOVE_DIRECTIONS.UP);
-          break;
-        case "s": case "S":
+        } else if (key === "s") {
           sendBinaryPaddleMove(wsP1, MOVE_DIRECTIONS.DOWN);
-          break;
-        case "p": case "P":
+        }
+        // Player 2 controls (P/L)
+        else if (key === "p") {
           sendBinaryPaddleMove(wsP2, MOVE_DIRECTIONS.UP);
-          break;
-        case "l": case "L":
+        } else if (key === "l") {
           sendBinaryPaddleMove(wsP2, MOVE_DIRECTIONS.DOWN);
-          break;
-      }
+        }
+        
+        return newKeys;
+      });
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
       // Don't send paddle moves if game is paused
       if (isPaused) return;
       
-      const MOVE_DIRECTION_STOP = 0;
-      switch (e.key) {
-        case "w": case "W": case "s": case "S":
-          sendBinaryPaddleMove(wsP1, MOVE_DIRECTION_STOP);
-          break;
-        case "p": case "P": case "l": case "L":
-          sendBinaryPaddleMove(wsP2, MOVE_DIRECTION_STOP);
-          break;
-      }
+      e.preventDefault();
+      
+      const key = e.key.toLowerCase();
+      
+      setPressedKeys((prevKeys: Set<string>) => {
+        const newKeys = new Set(prevKeys);
+        newKeys.delete(key);
+        
+        // Stop movement only if no other movement key is pressed for this player
+        const MOVE_DIRECTIONS = { DOWN: 1, UP: 2, STOP: 0 };
+        
+        // Player 1 controls
+        if (key === "w" || key === "s") {
+          if (newKeys.has("w")) {
+            sendBinaryPaddleMove(wsP1, MOVE_DIRECTIONS.UP);
+          } else if (newKeys.has("s")) {
+            sendBinaryPaddleMove(wsP1, MOVE_DIRECTIONS.DOWN);
+          } else {
+            sendBinaryPaddleMove(wsP1, MOVE_DIRECTIONS.STOP);
+          }
+        }
+        // Player 2 controls  
+        else if (key === "p" || key === "l") {
+          if (newKeys.has("p")) {
+            sendBinaryPaddleMove(wsP2, MOVE_DIRECTIONS.UP);
+          } else if (newKeys.has("l")) {
+            sendBinaryPaddleMove(wsP2, MOVE_DIRECTIONS.DOWN);
+          } else {
+            sendBinaryPaddleMove(wsP2, MOVE_DIRECTIONS.STOP);
+          }
+        }
+        
+        return newKeys;
+      });
     };
 
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
+    
+    // Clear pressed keys when window loses focus
+    const handleBlur = () => {
+      setPressedKeys(new Set());
+      // Send stop commands to both players
+      if (wsP1?.readyState === WebSocket.OPEN) {
+        sendBinaryPaddleMove(wsP1, 0);
+      }
+      if (wsP2?.readyState === WebSocket.OPEN) {
+        sendBinaryPaddleMove(wsP2, 0);
+      }
+    };
+    
+    window.addEventListener("blur", handleBlur);
+    
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", handleBlur);
     };
   }, [wsP1, wsP2, isPaused]);
 
@@ -240,6 +268,13 @@ export default function GameDisplay({ wsP1, wsP2, onScoreUpdate, isPaused = fals
     }
   }, [isPaused, wsP1, wsP2]);
 
+  // Clear pressed keys when game is paused or over
+  useEffect(() => {
+    if (isPaused || gameOver) {
+      setPressedKeys(new Set());
+    }
+  }, [isPaused, gameOver]);
+
   return (
     <div className="relative flex flex-col items-center space-y-4">
       {/* Scoreboard */}
@@ -251,6 +286,8 @@ export default function GameDisplay({ wsP1, wsP2, onScoreUpdate, isPaused = fals
 
       <div className="relative">
         <svg
+          x={-10}
+          y={-10}
           width={FIELD_WIDTH}
           height={FIELD_HEIGHT}
           className="bg-[#20201d] border-2 border-[#FFFACD] rounded-xl"
@@ -268,7 +305,7 @@ export default function GameDisplay({ wsP1, wsP2, onScoreUpdate, isPaused = fals
           />
           {/* Paddle 1 */}
           <rect
-            x={10}
+            x={0}
             y={gameState.p1PaddleY - PADDLE_HEIGHT / 2}
             width={PADDLE_WIDTH}
             height={PADDLE_HEIGHT}
@@ -276,7 +313,7 @@ export default function GameDisplay({ wsP1, wsP2, onScoreUpdate, isPaused = fals
           />
           {/* Paddle 2 */}
           <rect
-            x={FIELD_WIDTH - 10 - PADDLE_WIDTH}
+            x={FIELD_WIDTH - PADDLE_WIDTH}
             y={gameState.p2PaddleY - PADDLE_HEIGHT / 2}
             width={PADDLE_WIDTH}
             height={PADDLE_HEIGHT}

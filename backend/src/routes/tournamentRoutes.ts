@@ -9,8 +9,6 @@ interface TournamentDBResult {
   gameMode: string;
   status: 'registration' | 'ongoing' | 'finished';
   maxPlayers: number;
-  startDate?: string;
-  endDate?: string;
   winnerId?: string;
 }
 
@@ -24,8 +22,6 @@ interface Tournament {
   gameMode: string;
   status?: 'registration' | 'ongoing' | 'finished';
   maxPlayers?: number;
-  startDate?: string;
-  endDate?: string;
 }
 
 interface Match {
@@ -66,7 +62,7 @@ export async function tournamentRoutes(fastify: FastifyInstance) {
   // Create a tournament
   fastify.post<{ Body: Tournament }>('/', { preHandler: [jwtMiddleware] }, async (request: FastifyRequest<{ Body: Tournament }>, reply: FastifyReply) => {
     const tournament: Tournament = request.body;
-    const { name, gameMode, startDate, endDate, maxPlayers, status } = tournament;
+    const { name, gameMode, maxPlayers, status } = tournament;
 
     if (!name || !gameMode) {
       return reply.status(400).send({ message: 'Name and gameMode are required' });
@@ -78,14 +74,12 @@ export async function tournamentRoutes(fastify: FastifyInstance) {
 
     try {
       const stmt = db.prepare(`
-        INSERT INTO tournaments (name, gameMode, startDate, endDate, maxPlayers, status)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO tournaments (name, gameMode, maxPlayers, status)
+        VALUES (?, ?, ?, ?)
       `);
       const info = stmt.run(
         name,
         gameMode,
-        startDate || null,
-        endDate || null,
         maxPlayers || 16,
         'ongoing' // Directement en mode 'ongoing' au lieu de 'registration'
       );
@@ -112,7 +106,7 @@ export async function tournamentRoutes(fastify: FastifyInstance) {
   // Get all tournaments
   fastify.get('/', (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const tournaments = db.prepare('SELECT * FROM tournaments ORDER BY startDate DESC').all();
+      const tournaments = db.prepare('SELECT * FROM tournaments ORDER BY id DESC').all();
       reply.send(tournaments);
     } catch (error: any) {
       reply.status(500).send({ message: 'Database error', error: error.message });
@@ -517,7 +511,7 @@ async function createNextRound(tournamentId: string, currentRound: number): Prom
         const winner = standings[0];
         const updateTournament = db.prepare(`
           UPDATE tournaments 
-          SET status = 'finished', winnerId = ?, endDate = CURRENT_TIMESTAMP 
+          SET status = 'finished', winnerId = ?
           WHERE id = ?
         `);
         updateTournament.run(winner.userId, tournamentId);
@@ -628,7 +622,7 @@ async function createNextRound(tournamentId: string, currentRound: number): Prom
         const winner = standings[0];
         const updateTournament = db.prepare(`
           UPDATE tournaments 
-          SET status = 'finished', winnerId = ?, endDate = CURRENT_TIMESTAMP 
+          SET status = 'finished', winnerId = ?
           WHERE id = ?
         `);
         updateTournament.run(winner.userId, tournamentId);
@@ -648,7 +642,7 @@ async function createNextRound(tournamentId: string, currentRound: number): Prom
         const winner = standings[0];
         const updateTournament = db.prepare(`
           UPDATE tournaments 
-          SET status = 'finished', winnerId = ?, endDate = CURRENT_TIMESTAMP 
+          SET status = 'finished', winnerId = ?
           WHERE id = ?
         `);
         updateTournament.run(winner.userId, tournamentId);
@@ -713,7 +707,7 @@ async function createNextRound(tournamentId: string, currentRound: number): Prom
         const winner = standings[0];
         const updateTournament = db.prepare(`
           UPDATE tournaments 
-          SET status = 'finished', winnerId = ?, endDate = CURRENT_TIMESTAMP 
+          SET status = 'finished', winnerId = ?
           WHERE id = ?
         `);
         updateTournament.run(winner.userId, tournamentId);

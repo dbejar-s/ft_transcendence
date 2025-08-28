@@ -102,6 +102,7 @@ export default function TournamentList({ refreshKey = 0 }: { refreshKey?: number
     }
   }
 
+
   // Bracket
   const handleViewBracket = (tournamentId: number) => {
     setBracketTournamentId(tournamentId);
@@ -160,18 +161,6 @@ export default function TournamentList({ refreshKey = 0 }: { refreshKey?: number
                     className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors font-semibold"
                   >
                     {translate("viewBracket") || "View Bracket"}
-                  </button>
-                )}
-
-                {/* Check if current user is the creator to show delete button */}
-                {participantsByTournament[tournament.id] && 
-                 participantsByTournament[tournament.id].length > 0 && 
-                 participantsByTournament[tournament.id][0]?.id === player?.id && (
-                  <button
-                    onClick={() => deleteTournament(tournament.id)}
-                    className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors font-semibold"
-                  >
-                    {translate("deleteTournament") || "Delete Tournament"}
                   </button>
                 )}
               </div>

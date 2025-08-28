@@ -17,6 +17,7 @@ import {
 const GOOGLE_CLIENT_ID = process.env.VITE_GOOGLE_CLIENT_ID; // You need to create this in your .env
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const DEFAULT_AVATAR = '/default-avatar.svg'; // Default avatar path
 
 // Nodemailer transporter setup (Gmail SMTP)
 const transporter = nodemailer.createTransport({
@@ -48,8 +49,12 @@ export async function authRoutes(fastify: FastifyInstance) {
         try {
             const stmt = db.prepare('INSERT INTO users (id, email, username, password, avatar) VALUES (?, ?, ?, ?, ?)');
             const id = crypto.randomUUID();
-            const defaultAvatar = '/uploads/default-avatar.png'; // Make sure you have a default avatar image
-            stmt.run(id, sanitizedEmail, sanitizedUsername, hashedPassword, defaultAvatar);
+
+            //**** const defaultAvatar = '/uploads/default-avatar.png'; // Make sure you have a default avatar image
+            stmt.run(id, sanitizedEmail, sanitizedUsername, hashedPassword, DEFAULT_AVATAR);
+
+            //**** stmt.run(id, email, username, hashedPassword, DEFAULT_AVATAR);
+
             
             // Generate JWT immediately for new users (no 2FA required for registration)
             const token = jwt.sign({ id, email: sanitizedEmail }, process.env.JWT_SECRET as string, { expiresIn: '1h' });
@@ -57,9 +62,15 @@ export async function authRoutes(fastify: FastifyInstance) {
             // Return user info (without password) and token
             const newUser = {
                 id,
+
                 email: sanitizedEmail,
                 username: sanitizedUsername,
-                avatar: defaultAvatar,
+               //**** avatar: defaultAvatar,
+
+               //**** email,
+               //**** username,
+                avatar: DEFAULT_AVATAR,
+
                 language: 'en' // default language
             };
             
@@ -238,14 +249,16 @@ export async function authRoutes(fastify: FastifyInstance) {
                 let existingUser = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as any;
                 if (existingUser) {
                     // Email exists, link Google account
-                    db.prepare('UPDATE users SET googleId = ?, avatar = ? WHERE email = ?').run(googleId, avatar, email);
+                    const finalAvatar = avatar || DEFAULT_AVATAR;
+                    db.prepare('UPDATE users SET googleId = ?, avatar = ? WHERE email = ?').run(googleId, finalAvatar, email);
                     // Fetch the updated user data
                     user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as any;
                 } else {
                     // Create new user
                     const id = crypto.randomUUID();
+                    const finalAvatar = avatar || DEFAULT_AVATAR;
                     db.prepare('INSERT INTO users (id, email, username, googleId, avatar, language, status) VALUES (?, ?, ?, ?, ?, ?, ?)')
-                      .run(id, email, name, googleId, avatar, 'en', 'online');
+                      .run(id, email, name, googleId, finalAvatar, 'en', 'online');
                     // Fetch the newly created user data
                     user = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as any;
                 }
