@@ -1,6 +1,8 @@
 import type React from "react"
 import i18n from "i18next"
 
+export const DEFAULT_AVATAR = "/default-avatar.svg"
+
 export const predefinedAvatars = [
   { src: "/assets/Profile/women1.png", alt: "women1" },
   { src: "/assets/Profile/women2.png", alt: "women2" },
