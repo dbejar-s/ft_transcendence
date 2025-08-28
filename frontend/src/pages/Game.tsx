@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import GameDisplay from "../components/GameDisplay";
 import { usePlayer } from "../context/PlayerContext";
 import { useLocation } from "react-router-dom";
-
+import { useRef } from "react";
 
 interface Player {
   id: string;
@@ -21,11 +21,34 @@ export default function Game() {
   const [wsPlayer2, setWsPlayer2] = useState<WebSocket | null>(null);
   const [scores, setScores] = useState({ p1: 0, p2: 0 });
   const [gameOver, setGameOver] = useState<null | { winner: string; loser: string; score: string }>(null);
+  const matchSavedRef = useRef(false);
+
+  // Check if this is a tournament match
+  const [tournamentMatch, setTournamentMatch] = useState<any>(null);
 
   const [players, setPlayers] = useState({
     player1: { username: player?.username || "Player 1" },
     player2: { username: "Guest" }
   });
+
+  // Check for tournament match data only if coming from tournament navigation
+  useEffect(() => {
+    // Only load tournament data if we came from the tournament page
+    // Check if location.state has tournament match data
+    if (location.state?.tournamentMatch) {
+      const matchData = location.state.tournamentMatch;
+      setTournamentMatch(matchData);
+      setPlayers({
+        player1: { username: matchData.player1 },
+        player2: { username: matchData.player2 }
+      });
+      // Reset match saved state for new tournament match
+      matchSavedRef.current = false;
+      setGameOver(null);
+      console.log('Tournament match loaded from navigation:', matchData);
+    }
+    // If no tournament data in navigation state, use normal game mode
+  }, [location.state]);
 
   // Function to handle score updates from GameDisplay
   const handleScoreUpdate = (p1Score: number, p2Score: number) => {
@@ -34,34 +57,68 @@ export default function Game() {
     setScores({ p2: p1Score, p1: p2Score });
   };
 
-  const handleWsMessage = (event: MessageEvent) => {
-    if (!(event.data instanceof ArrayBuffer)) return;
-
-    const view = new DataView(event.data);
-    const type = view.getUint8(1);
-    const length = view.getUint16(2, false); // Big endian
-    const bodyOffset = 4;
-
-    console.debug(`[WS MESSAGE] Type: ${type}, Length: ${length}, Total buffer size: ${event.data.byteLength}`);    if (type === 2) {
-      // GAME OVER message
-      const winnerId = view.getUint8(bodyOffset);
-      const winner = winnerId === 1 ? players.player1.username : players.player2.username;
-      const loser = winnerId === 1 ? players.player2.username : players.player1.username;
-
-      // Extract final scores from the GAME OVER message
-      // According to MESSAGE-FORMAT.md v1: P --- F --- 2 x S
-      const finalP1Score = view.getUint8(bodyOffset + 2);
-      const finalP2Score = view.getUint8(bodyOffset + 3);
-      
-      console.debug(`[GAME OVER] Winner: ${winnerId}, Final scores P1: ${finalP1Score}, P2: ${finalP2Score}`);
-      
-      setGameOver({
-        winner,
-        loser,
-        score: winnerId === 1 ? `${finalP2Score} - ${finalP1Score}` : `${finalP1Score} - ${finalP2Score}`,
-      });
-    }
+  // Function to check if the current logged-in player is actually playing in this match
+  const isCurrentPlayerPlaying = () => {
+    if (!player?.username) return false;
+    
+    // Check if the current player is either player1 or player2
+    const isPlaying = (
+      players.player1.username === player.username || 
+      players.player2.username === player.username
+    );
+    
+    console.log(`[SAVE CHECK] Current player: ${player.username}, Player1: ${players.player1.username}, Player2: ${players.player2.username}, Is playing: ${isPlaying}`);
+    
+    return isPlaying;
   };
+
+  const handleWsMessage = (event: MessageEvent) => {
+	if (!(event.data instanceof ArrayBuffer)) return;
+
+	const view = new DataView(event.data);
+	const type = view.getUint8(1);
+	const length = view.getUint16(2, false); // Big endian
+	const bodyOffset = 4;
+
+	console.debug(
+		`[WS MESSAGE] Type: ${type}, Length: ${length}, Total buffer size: ${event.data.byteLength}`
+	);
+
+	if (type === 2) {
+		// GAME OVER message
+		const winnerId = view.getUint8(bodyOffset);
+		const winner =
+		winnerId === 1 ? players.player1.username : players.player2.username;
+		const loser =
+		winnerId === 1 ? players.player2.username : players.player1.username;
+
+		// Extract final scores from the GAME OVER message
+		// According to MESSAGE-FORMAT.md v1: P --- F --- 2 x S
+		const finalP1Score = view.getUint8(bodyOffset + 2);
+		const finalP2Score = view.getUint8(bodyOffset + 3);
+
+		console.debug(
+		`[GAME OVER] Winner: ${winnerId}, Final scores P1: ${finalP1Score}, P2: ${finalP2Score}`
+		);
+
+		const gameOverData = {
+		winner,
+		loser,
+		score:
+			winnerId === 1
+			? `${finalP2Score} - ${finalP1Score}`
+			: `${finalP1Score} - ${finalP2Score}`,
+		};
+
+		setGameOver(gameOverData);
+
+		// Save the match to database only once and only if the current player is actually playing
+		if (!matchSavedRef.current && isCurrentPlayerPlaying()) {
+		matchSavedRef.current = true;
+		saveMatchResult(winnerId, finalP1Score, finalP2Score);
+		}
+	}
+	};
 
   const startGame = async () => {
     if (!player?.id) {
@@ -70,7 +127,15 @@ export default function Game() {
       return;
     }
     setShowOverlay(false);
-    setPlayers(prev => ({ ...prev, player2: { username: guestName } }));
+    
+    // Reset match saved state for new game
+    matchSavedRef.current = false;
+    setGameOver(null);
+    
+    // Only update player2 name if this is NOT a tournament match
+    if (!tournamentMatch) {
+      setPlayers(prev => ({ ...prev, player2: { username: guestName } }));
+    }
 
     try {
       const backendUrl = 'http://localhost:3001';
@@ -173,9 +238,60 @@ export default function Game() {
 	};
 	}, [location]);
 
+  // Function to save match result to database
+  const saveMatchResult = async (winnerId: number, p1Score: number, p2Score: number) => {
+    if (!player?.id) return;
+
+    try {
+      // For tournament matches, only save if the current player is actually playing
+      // For casual games, always save (current player is always player1)
+      
+      const matchData = {
+        player1Id: player.id, // Always use current player as player1 in our database
+        player1Name: player.username, // Use current player's username
+        player2Name: tournamentMatch ? 
+          (players.player1.username === player.username ? players.player2.username : players.player1.username) :
+          players.player2.username, // In casual, player2 is the guest
+        player1Score: tournamentMatch ?
+          (players.player1.username === player.username ? p1Score : p2Score) : p1Score,
+        player2Score: tournamentMatch ?
+          (players.player1.username === player.username ? p2Score : p1Score) : p2Score,
+        winnerId: 
+          (tournamentMatch ? 
+            ((players.player1.username === player.username && winnerId === 1) || 
+             (players.player2.username === player.username && winnerId === 2)) :
+            winnerId === 1) ? player.id : null,
+        gameMode: tournamentMatch ? 'Tournament' : 'Casual',
+        tournamentId: tournamentMatch?.tournamentId || null,
+        playedAt: new Date().toISOString()
+      };
+
+      console.log('Saving match result:', matchData);
+
+      const response = await fetch('http://localhost:3001/api/matches', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(matchData)
+      });
+
+      if (response.ok) {
+        console.log('Match saved successfully');
+        // Dispatch custom event to notify components to refresh
+        window.dispatchEvent(new CustomEvent('matchCompleted'));
+      } else {
+        console.error('Failed to save match:', await response.text());
+      }
+    } catch (error) {
+      console.error('Error saving match:', error);
+    }
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-[#2a2a27] relative overflow-hidden">
-      {showOverlay && (
+    <div className="min-h-screen flex flex-col bg-[#2a2a27] relative overflow-hidden">      {showOverlay && (
+        // Initial Overlay with instructions and guest name input
         <div className="absolute inset-0 bg-black bg-opacity-70 z-20 flex flex-col justify-center items-center p-8 text-white text-center">
           <div className="max-w-xl bg-[#55534e] bg-opacity-90 p-6 rounded-xl shadow-lg space-y-4 border border-[#FFFACD]">
             <h2 className="text-2xl font-press text-[#FFFACD]">
@@ -186,14 +302,26 @@ export default function Game() {
                 "Player 1: W/S Keys | Player 2: P/L Keys"}
             </p>
 
-            <h2 className="text-2xl font-press text-[#FFFACD]">{"Guest name"}</h2>
-            <input
-              type="text"
-              placeholder={"Guest name"}
-              value={guestName}
-              onChange={(e) => setGuestName(e.target.value)}
-              className="w-full px-4 py-2 font-press rounded-lg text-[#20201d] border border-[#FFFACD]"
-            />
+            {/* Show tournament match info or guest name input */}
+            {tournamentMatch ? (
+              <div className="space-y-2">
+                <h3 className="text-xl font-press text-[#FFFACD]">Tournament Match</h3>
+                <p className="text-lg font-press text-yellow-400">
+                  {tournamentMatch.player1} vs {tournamentMatch.player2}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <h2 className="text-2xl font-press text-[#FFFACD]">Guest name</h2>
+                <input
+                  type="text"
+                  placeholder="Guest name"
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
+                  className="w-full px-4 py-2 font-press rounded-lg text-[#20201d] border border-[#FFFACD]"
+                />
+              </div>
+            )}
 
             <button
               onClick={startGame}

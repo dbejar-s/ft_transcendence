@@ -7,10 +7,72 @@ import util from 'util';
 import { pipeline } from 'stream';
 import bcrypt from 'bcrypt'; // Import bcrypt
 import { jwtMiddleware } from '../jwtMiddleware'; // Import the middleware
+import crypto from 'crypto';
 
 const pump = util.promisify(pipeline);
 
 export async function userRoutes(fastify: FastifyInstance) {
+
+    // Create a temporary user (for tournament participants)
+    fastify.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
+		const { username, isTemporary } = request.body as { username: string; isTemporary?: boolean };
+		
+		if (!username) {
+		return reply.status(400).send({ message: 'Username is required' });
+		}
+
+		try {
+		// Check if username already exists
+		const existingUser = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+		if (existingUser) {
+			return reply.status(409).send({ message: 'Username already exists' });
+		}
+
+		// Create user (default to regular user unless explicitly temporary)
+		const stmt = db.prepare(`
+			INSERT INTO users (id, username, email, isTemporary) 
+			VALUES (?, ?, ?, ?)
+		`);
+		
+		const userId = crypto.randomUUID();
+		const email = `${username}@tournament.com`;
+		
+		stmt.run(userId, username, email, isTemporary ? 1 : 0);
+		
+		console.log(`Created ${isTemporary ? 'temporary' : 'regular'} user:`, username, 'ID:', userId);
+		
+		reply.status(201).send({
+			message: 'User created successfully',
+			id: userId,
+			username: username,
+			isTemporary: isTemporary || false
+		});
+		} catch (error: any) {
+		console.error('Error creating user:', error);
+		reply.status(500).send({ message: 'Database error', error: error.message });
+		}
+	});
+
+	fastify.get('/by-username/:username', (request: FastifyRequest, reply: FastifyReply) => {
+		const { username } = request.params as { username: string };
+		
+		if (!username) {
+		return reply.status(400).send({ message: 'Username is required' });
+		}
+
+		try {
+		const user = db.prepare('SELECT id, username, email, avatar, status, language FROM users WHERE username = ?').get(username);
+		
+		if (user) {
+			reply.send(user);
+		} else {
+			reply.status(404).send({ message: 'User not found' });
+		}
+		} catch (error: any) {
+		console.error('Error finding user by username:', error);
+		reply.status(500).send({ message: 'Database error', error: error.message });
+		}
+    });
 
     fastify.get('/current', { preHandler: [jwtMiddleware] }, async (request: FastifyRequest, reply: FastifyReply) => {
     	reply.header('Cache-Control', 'no-store');
@@ -40,6 +102,71 @@ export async function userRoutes(fastify: FastifyInstance) {
             reply.send(user);
         } else {
             reply.status(404).send({ message: 'User not found' });
+        }
+    });
+
+    // Get user profile with recent matches
+    fastify.get('/:id/profile', (request: FastifyRequest, reply: FastifyReply) => {
+        const { id } = request.params as any;
+        
+        try {
+            // Get user basic info with games count
+            const userStmt = db.prepare(`
+                SELECT u.id, u.username, u.email, u.avatar, u.status, u.language,
+                       COUNT(m.id) as gamesPlayed
+                FROM users u
+                LEFT JOIN matches m ON (m.player1Id = u.id OR m.player2Id = u.id)
+                WHERE u.id = ?
+                GROUP BY u.id, u.username, u.email, u.avatar, u.status, u.language
+            `);
+            const user = userStmt.get(id) as any;
+
+            if (!user) {
+                return reply.status(404).send({ message: 'User not found' });
+            }
+
+            // Get recent matches
+            const matchesStmt = db.prepare(`
+                SELECT m.*, 
+                       u1.username as player1Name, u1.avatar as player1Avatar,
+                       u2.username as player2Name, u2.avatar as player2Avatar
+                FROM matches m
+                LEFT JOIN users u1 ON m.player1Id = u1.id
+                LEFT JOIN users u2 ON m.player2Id = u2.id
+                WHERE m.player1Id = ? OR m.player2Id = ?
+                ORDER BY m.playedAt DESC
+                LIMIT 10
+            `);
+            const rawMatches = matchesStmt.all(id, id) as any[];
+
+            // Transform matches to include proper opponent info and estimated duration
+            const recentMatches = rawMatches.map((match) => {
+                const isPlayer1 = match.player1Id === id;
+                const opponent = isPlayer1 ? match.player2Name || 'Guest' : match.player1Name;
+                const opponentAvatar = isPlayer1 ? match.player2Avatar || '/default-avatar.png' : match.player1Avatar;
+                const result = match.winnerId === id ? 'win' : 'loss';
+                const score = `${match.player1Score}-${match.player2Score}`;
+                
+                // Generate consistent estimated duration based on match ID (2-4 minutes)
+                const estimatedMinutes = (match.id % 3) + 2;
+                const duration = `${estimatedMinutes}min`;
+
+                return {
+                    id: match.id,
+                    opponent,
+                    opponentAvatar,
+                    result,
+                    score,
+                    gameMode: match.gameMode,
+                    duration,
+                    date: match.playedAt
+                };
+            });
+
+            reply.send({ ...user, recentMatches });
+        } catch (error: any) {
+            console.error('Error getting user profile:', error);
+            reply.status(500).send({ message: 'Database error', error: error.message });
         }
     });
 
@@ -188,3 +315,23 @@ export async function userRoutes(fastify: FastifyInstance) {
         }
     });
 }
+
+// function updateUserStats(userId: string, tournamentId: string, isWinner: boolean, score: number) {
+//   try {
+//     // Update stats for ALL users (no more checking for temporary users)
+//     const statsUpdate = db.prepare(`
+//       INSERT OR REPLACE INTO user_stats (userId, tournaments_played, tournaments_won, total_score)
+//       VALUES (
+//         ?, 
+//         COALESCE((SELECT tournaments_played FROM user_stats WHERE userId = ?), 0) + 1,
+//         COALESCE((SELECT tournaments_won FROM user_stats WHERE userId = ?), 0) + ?,
+//         COALESCE((SELECT total_score FROM user_stats WHERE userId = ?), 0) + ?
+//       )
+//     `);
+//     statsUpdate.run(userId, userId, userId, isWinner ? 1 : 0, userId, score);
+    
+//     console.log(`Updated stats for user ${userId}: winner=${isWinner}, score=${score}`);
+//   } catch (error) {
+//     console.error('Error updating user stats:', error);
+//   }
+// }

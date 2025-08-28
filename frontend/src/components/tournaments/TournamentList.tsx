@@ -1,114 +1,118 @@
 import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { usePlayer } from "../../context/PlayerContext"
+import TournamentBracket from "./TournamentBracket"
 
 // Tournament interface
 interface Tournament {
   id: number
   name: string
-  status: "not_started" | "ongoing" | "finished"
+  status: "registration" | "ongoing" | "finished"
 }
 
 // Result interface
 interface Result {
   player: string
   score: number
+  userId?: string
 }
 
-export default function TournamentList() {
+export default function TournamentList({ refreshKey = 0 }: { refreshKey?: number }) {
   const { t: translate } = useTranslation()
+  const { player } = usePlayer()
 
   const [tournaments, setTournaments] = useState<Tournament[]>([])
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null)
   const [results, setResults] = useState<Result[]>([])
-  const [loadingResults, setLoadingResults] = useState(false)
+  const [loadingResults] = useState(false)
   const [showResultsModal, setShowResultsModal] = useState(false)
-  const [registeredTournamentIds, setRegisteredTournamentIds] = useState<number[]>([])
-  const [participantsByTournament, setParticipantsByTournament] = useState<Record<number, string[]>>({})
+  const [participantsByTournament, setParticipantsByTournament] = useState<Record<number, any[]>>({})
+  const [showBracket, setShowBracket] = useState(false)
+  const [bracketTournamentId, setBracketTournamentId] = useState<number | null>(null)
 
-  useEffect(() => {
-    // Mocked tournaments - replace with real API call
-    const mockTournaments: Tournament[] = [
-      { id: 1, name: "Spring Showdown", status: "not_started" },
-      { id: 2, name: "Summer Slam", status: "ongoing" },
-      { id: 3, name: "Fall Finale", status: "finished" },
-    ]
-    setTournaments(mockTournaments)
-  }, [])
-
-  const handleViewResults = (tournament: Tournament) => {
-    setSelectedTournament(tournament)
-    setShowResultsModal(true)
-    setLoadingResults(true)
-
-    const mockResults: Record<number, Result[]> = {
-      2: [
-        { player: "Alice", score: 15 },
-        { player: "Bob", score: 12 },
-        { player: "Kathy", score: 9 },
-        { player: "Liam", score: 7 },
-        { player: "Ian", score: 13 },
-        { player: "Jack", score: 11 },
-        { player: "Mia", score: 5 },
-        { player: "Nina", score: 3 },
-        { player: "Oscar", score: 1 },
-        { player: "Eve", score: 10 },
-        { player: "Frank", score: 8 },
-      ],
-      3: [
-        { player: "Charlie", score: 20 },
-        { player: "Diana", score: 18 },
-        { player: "George", score: 16 },
-        { player: "Hannah", score: 14 },
-        { player: "Ian", score: 13 },
-        { player: "Jack", score: 11 },
-        { player: "Kathy", score: 9 },
-        { player: "Liam", score: 7 },
-        { player: "Mia", score: 5 },
-        { player: "Nina", score: 3 },
-        { player: "Oscar", score: 1 },
-      ],
+  const fetchParticipants = async (tournamentId: number) => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`http://localhost:3001/api/tournaments/${tournamentId}/participants`, {
+        headers: token ? {
+          'Authorization': `Bearer ${token}`
+        } : {}
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setParticipantsByTournament((prev: Record<number, any[]>) => ({ ...prev, [tournamentId]: data || [] }))
+      } else {
+        console.log(`No participants for tournament ${tournamentId}`)
+        setParticipantsByTournament((prev: Record<number, any[]>) => ({ ...prev, [tournamentId]: [] }))
+      }
+    } catch (error) {
+      console.error('Error fetching participants:', error)
+      setParticipantsByTournament((prev: Record<number, any[]>) => ({ ...prev, [tournamentId]: [] }))
     }
-
-    setTimeout(() => {
-      const res = mockResults[tournament.id] || []
-      const sorted = res.sort((a, b) => b.score - a.score)
-      setResults(sorted)
-      setLoadingResults(false)
-    }, 500)
   }
 
-  const handleRegister = (tournamentId: number) => {
-    alert(`You registered for tournament #${tournamentId}`)
-
-    // TODO: Replace with API call and real participant list update
-    // For demo, we add the tournamentId and update participants list mock
-    setRegisteredTournamentIds((prev) => [...prev, tournamentId])
-
-    setParticipantsByTournament((prev) => {
-      const updated = { ...prev }
-      // If no participants yet, initialize with some mock names + current user "You"
-      if (!updated[tournamentId]) {
-        updated[tournamentId] = ["You", `PlayerA_${tournamentId}`, `PlayerB_${tournamentId}`]
-      } else if (!updated[tournamentId].includes("You")) {
-        updated[tournamentId] = [...updated[tournamentId], "You"]
+  const fetchTournaments = async () => {
+    try {
+      const res = await fetch("http://localhost:3001/api/tournaments");
+      const tournamentsData = await res.json();
+      setTournaments(tournamentsData);
+      
+      // Load participants for each tournament
+      for (const tournament of tournamentsData) {
+        await fetchParticipants(tournament.id);
       }
-      return updated
-    })
+    } catch (error) {
+      console.error("Error loading tournaments:", error);
+      setTournaments([]);
+    }
   }
 
-  const handleUnregister = (tournamentId: number) => {
-    alert(`You unregistered from tournament #${tournamentId}`)
+  // Load tournaments on mount or when refreshKey changes
+  useEffect(() => {
+    fetchTournaments();
+  }, [refreshKey]);
 
-    setRegisteredTournamentIds((prev) => prev.filter((id) => id !== tournamentId))
-
-    setParticipantsByTournament((prev) => {
-      const updated = { ...prev }
-      if (updated[tournamentId]) {
-        updated[tournamentId] = updated[tournamentId].filter((name) => name !== "You")
+  // Delete tournament
+  const deleteTournament = async (tournamentId: number) => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        alert('You must be logged in to delete a tournament');
+        return;
       }
-      return updated
-    })
+
+      const response = await fetch(`http://localhost:3001/api/tournaments/${tournamentId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (response.ok) {
+        await fetchTournaments() // Refresh the list
+      } else {
+        const error = await response.json()
+        console.error('Error deleting tournament:', error.message)
+        alert('Error deleting tournament: ' + error.message)
+      }
+    } catch (error) {
+      console.error('Error deleting tournament:', error)
+      alert('Error deleting tournament')
+    }
   }
+
+  // Bracket
+  const handleViewBracket = (tournamentId: number) => {
+    setBracketTournamentId(tournamentId);
+    setShowBracket(true);
+  };
+
+  const closeBracket = () => {
+    setShowBracket(false);
+    setBracketTournamentId(null);
+    fetchTournaments();
+  };
 
   const closeModal = () => {
     setShowResultsModal(false)
@@ -118,9 +122,6 @@ export default function TournamentList() {
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6 text-[#FFFACD] font-press bg-[#2a2a27] min-h-screen">
-      <h1 className="text-3xl mb-6 text-center">
-        {translate("tournaments") || "Tournaments"}
-      </h1>
 
       {tournaments.length === 0 ? (
         <p className="text-center">{translate("noTournaments") || "No tournaments available."}</p>
@@ -134,8 +135,8 @@ export default function TournamentList() {
               <div>
                 <div className="font-bold text-lg">{tournament.name}</div>
                 <div className="text-sm opacity-70">
-                  {tournament.status === "not_started"
-                    ? translate("notStarted") || "Not Started"
+                  {tournament.status === "registration"
+                    ? translate("registration") || "Registration"
                     : tournament.status === "ongoing"
                     ? translate("ongoing") || "Ongoing"
                     : translate("finished") || "Finished"}
@@ -143,44 +144,56 @@ export default function TournamentList() {
               </div>
 
               <div className="flex gap-4">
-                {tournament.status === "not_started" && (
-                  registeredTournamentIds.includes(tournament.id) ? (
-                    <button
-                      onClick={() => handleUnregister(tournament.id)}
-                      className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors font-semibold"
-                    >
-                      {translate("unregister") || "Unregister"}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleRegister(tournament.id)}
-                      className="bg-[#FFFACD] text-[#20201d] px-4 py-2 rounded hover:bg-opacity-90 transition-colors font-semibold"
-                    >
-                      {translate("register") || "Register"}
-                    </button>
-                  )
-                )}
-
-                {(tournament.status === "ongoing" || tournament.status === "finished") && (
+                {/* Buttons for all statuses */}
+                {tournament.status === "finished" ? (
+                  // For finished tournaments: View Results in white
                   <button
-                    onClick={() => handleViewResults(tournament)}
+                    onClick={() => handleViewBracket(tournament.id)}
                     className="bg-[#FFFACD] text-[#20201d] px-4 py-2 rounded hover:bg-opacity-90 transition-colors font-semibold"
                   >
                     {translate("viewResults") || "View Results"}
+                  </button>
+                ) : (
+                  // For ongoing or registration tournaments: View Bracket in blue
+                  <button
+                    onClick={() => handleViewBracket(tournament.id)}
+                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors font-semibold"
+                  >
+                    {translate("viewBracket") || "View Bracket"}
+                  </button>
+                )}
+
+                {/* Check if current user is the creator to show delete button */}
+                {participantsByTournament[tournament.id] && 
+                 participantsByTournament[tournament.id].length > 0 && 
+                 participantsByTournament[tournament.id][0]?.id === player?.id && (
+                  <button
+                    onClick={() => deleteTournament(tournament.id)}
+                    className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors font-semibold"
+                  >
+                    {translate("deleteTournament") || "Delete Tournament"}
                   </button>
                 )}
               </div>
             </div>
 
-            {/* Participants list visible only if registered */}
-            {registeredTournamentIds.includes(tournament.id) && participantsByTournament[tournament.id] && (
-              <div className="text-sm mt-2">
-                <span className="font-semibold">{translate("participants") || "Participants"}:</span>
-                <ul className="list-disc list-inside mt-1">
-                  {participantsByTournament[tournament.id].map((name, idx) => (
-                    <li key={idx}>{name}</li>
+            {/* Participants section */}
+            {participantsByTournament[tournament.id] && participantsByTournament[tournament.id].length > 0 && (
+              <div className="mt-4 p-3 bg-[#1a1a17] rounded-lg">
+                <h4 className="text-sm font-semibold mb-2 text-[#FFFACD] opacity-80">
+                  {translate("participants") || "Participants"} ({participantsByTournament[tournament.id].length})
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {participantsByTournament[tournament.id].map((participant: any, index: number) => (
+                    <span 
+                      key={participant.id || index}
+                      className="px-2 py-1 bg-[#2a2a27] rounded text-xs text-[#FFFACD]"
+                    >
+                      {participant.username}
+                      {participant.id === player?.id && " (You)"}
+                    </span>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
           </div>
@@ -250,6 +263,14 @@ export default function TournamentList() {
             )}
           </div>
         </div>
+      )}
+      
+      {/* Tournament Bracket Modal */}
+      {showBracket && bracketTournamentId && (
+        <TournamentBracket
+          tournamentId={bracketTournamentId}
+          onClose={closeBracket}
+        />
       )}
     </div>
   )

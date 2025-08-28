@@ -4,13 +4,13 @@ import { useTranslation } from "react-i18next"
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
 import { statisticsService } from "../../services/api"
 
-// Couleurs pour le pie chart
-const COLORS = ['#4ade80', '#f87171'] // vert = victoires, rouge = défaites
+// Colors for the pie chart
+const COLORS = ['#4ade80', '#f87171'] // green = wins, red = losses
 
 export default function Statistics({ userId }: { userId: string }) {
   const { t } = useTranslation()
 
-  // Stats globales
+  // Global stats
   const [statsData, setStatsData] = useState<{
     totalGames: number
     wins: number
@@ -20,28 +20,42 @@ export default function Statistics({ userId }: { userId: string }) {
   } | null>(null)
 
   useEffect(() => {
+    console.log('Fetching stats for user:', userId);
     statisticsService.getUserStats(userId)
-      .then(data => setStatsData(data))
-      .catch(console.error)
+      .then(data => {
+        console.log('Stats data received:', data);
+        setStatsData(data);
+      })
+      .catch(error => {
+        console.error('Error fetching stats:', error);
+      });
   }, [userId])
 
-  // Fonction utilitaire pour le pie chart
+  // Add event listener for when a match is completed
+  useEffect(() => {
+    const handleMatchCompleted = () => {
+      console.log('Match completed event received, refreshing statistics for user:', userId);
+      statisticsService.getUserStats(userId)
+        .then(data => {
+          console.log('Updated stats data received:', data);
+          setStatsData(data);
+        })
+        .catch(error => {
+          console.error('Error refreshing stats after match:', error);
+        });
+    }
+
+    window.addEventListener('matchCompleted', handleMatchCompleted)
+    return () => window.removeEventListener('matchCompleted', handleMatchCompleted)
+  }, [userId])
+
+  // Prepare data for pie chart
   const pieDataForMode = (mode: { games: number; wins: number }) => [
     { name: t("wins") || "Wins", value: mode.wins },
     { name: t("losses") || "Losses", value: mode.games - mode.wins },
   ]
 
-  // Couleur des changements (si tu veux afficher des variations)
-  // const getChangeColor = (type?: string) => {
-  //   switch (type) {
-  //     case "positive": return "text-green-400"
-  //     case "negative": return "text-red-400"
-  //     case "neutral": return "text-[#FFFACD] opacity-70"
-  //     default: return "text-[#FFFACD] opacity-70"
-  //   }
-  // }
-
-  // Préparer les cartes statistiques
+  // Prepare data for display
   const stats = [
     {
       title: t("totalGames") || "Total Games",
@@ -55,7 +69,7 @@ export default function Statistics({ userId }: { userId: string }) {
     },
     {
       title: t("playTime") || "Play Time",
-      value: statsData ? `${Math.floor(statsData.playTime / 3600)}h` : "...",
+      value: statsData ? `${Math.floor(statsData.playTime / 60)}min` : "...",
       icon: <Clock size={24} />,
     },
     {
@@ -67,13 +81,13 @@ export default function Statistics({ userId }: { userId: string }) {
 
   return (
     <div className="space-y-8">
-      {/* Titre section */}
+      {/* Section title */}
       <div className="flex items-center gap-3">
         <BarChart3 className="text-[#FFFACD]" size={24} />
         <h2 className="text-lg font-press font-bold text-[#FFFACD]">{t("statistics") || "Statistics"}</h2>
       </div>
 
-      {/* Cartes stats globales */}
+      {/* Global stats cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
         {stats.map((stat, index) => (
           <div key={index} className="bg-[#2a2a27] rounded-lg p-6 hover:bg-opacity-80 transition-colors">
@@ -88,7 +102,7 @@ export default function Statistics({ userId }: { userId: string }) {
         ))}
       </div>
 
-      {/* Stats par mode de jeu */}
+      {/* Stats by game mode */}
       <div className="bg-[#2a2a27] rounded-lg p-6">
         <h3 className="text-sm font-press font-bold text-[#FFFACD] mb-4">
           {t("performanceByGameMode") || "Performance by Game Mode"}
@@ -130,7 +144,7 @@ export default function Statistics({ userId }: { userId: string }) {
                 </PieChart>
               </ResponsiveContainer>
 
-              {/* Infos mode */}
+              {/* Mode info */}
               <div className="text-xs font-press text-[#FFFACD] opacity-70 mt-2">
                 {t("games") || "Games"}: {mode.games}
               </div>

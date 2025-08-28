@@ -8,7 +8,7 @@ interface HomeProps {
   onNavigateToGame?: () => void
 }
 
-export default function Home({ showLogoutMsg, setShowLogoutMsg, onNavigateToGame }: HomeProps) {
+export default function Home({ showLogoutMsg, setShowLogoutMsg }: HomeProps) {
   const { t } = useTranslation()
 
   useEffect(() => {
@@ -18,13 +18,6 @@ export default function Home({ showLogoutMsg, setShowLogoutMsg, onNavigateToGame
     }
   }, [showLogoutMsg, setShowLogoutMsg, t])
 
-  const handlePlayNow = () => {
-    if (onNavigateToGame) {
-      onNavigateToGame()
-    } else {
-      console.log("Navigate to game")
-    }
-  }
 
   return (
     <div className="min-h-screen flex flex-col bg-[#2a2a27]">
@@ -94,14 +87,14 @@ export default function Home({ showLogoutMsg, setShowLogoutMsg, onNavigateToGame
                 {t("welcomeDescription") || "Compete in tournaments, challenge friends in intense pong battles!"}
               </p>
 
-              <button
+              {/* <button
                 onClick={handlePlayNow}
                 aria-label={t("playNowAria") || "Start playing the game"}
                 className="group relative font-press text-lg bg-[#FFFACD] text-[#20201d] px-8 py-4 rounded-lg border-4 border-[#FFFACD] hover:bg-[#20201d] hover:text-[#FFFACD] transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-[#FFFACD]/50"
               >
                 <span className="relative z-10">🎮 {t("playNow") || "PLAY NOW"}</span>
                 <div className="absolute inset-0 bg-[#FFFACD] opacity-20 rounded-lg blur-sm group-hover:opacity-40 transition-opacity"></div>
-              </button>
+              </button> */}
             </div>
           </div>
         </div>
