@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next"
 
 interface Match {
   id: number;
@@ -40,6 +41,7 @@ interface TournamentBracketProps {
 }
 
 export default function TournamentBracket({ tournamentId, onClose }: TournamentBracketProps) {
+  const { t } = useTranslation()
   const navigate = useNavigate();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [participants, setParticipants] = useState<any[]>([]); // Add participants state
@@ -435,12 +437,12 @@ export default function TournamentBracket({ tournamentId, onClose }: TournamentB
             </h3>
             {tournament?.status === 'ongoing' && (
               <p className="text-gray-400">
-                Complete all matches to advance to the next round
+                {t("completeAllMatches")}
               </p>
             )}
             {tournament?.status === 'finished' && (
               <p className="text-green-400 text-lg">
-                🎉 Congratulations to all participants!
+                🎉 {t("congratulation")} {t("allParticipants")}
               </p>
             )}
           </div>
@@ -459,7 +461,7 @@ export default function TournamentBracket({ tournamentId, onClose }: TournamentB
           {tournament?.status === 'finished' && allMatches.length > 0 && (
             <div>
               <h3 className="text-2xl font-bold mb-6 text-center text-blue-400">
-                📊 All Tournament Matches
+                📊 {t("allTournamentMatches")}
               </h3>
               {Object.entries(getMatchesByRoundAndPhase())
                 .sort(([a], [b]) => parseInt(a) - parseInt(b))

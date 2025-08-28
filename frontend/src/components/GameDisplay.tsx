@@ -125,7 +125,6 @@ export default function GameDisplay({ wsP1, wsP2, onScoreUpdate, isPaused = fals
       // Don't send paddle moves if game is paused
       if (isPaused) return;
       
-      if (e.repeat) return;
       const MOVE_DIRECTIONS = { DOWN: 1, UP: 2 };
 
       switch (e.key) {
