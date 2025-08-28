@@ -31,12 +31,23 @@ RUN npm run build
 
 FROM node:20-slim
 
+# Install OpenSSL for certificate generation
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY --from=build /app/dist /app/dist
 COPY --from=build /app/package.json /app/package.json
 COPY server.js /app/
-COPY certs /app/certs
+
+# Generate SSL certificates if they don't exist
+RUN mkdir -p certs && \
+    if [ ! -f certs/key.pem ]; then \
+        openssl genrsa -out certs/key.pem 2048; \
+        openssl req -new -x509 -key certs/key.pem -out certs/cert.pem -days 365 \
+            -subj "/C=US/ST=State/L=City/O=Organization/CN=localhost"; \
+        echo "Generated SSL certificates for frontend"; \
+    fi
 
 RUN npm install express@^4.18.0
 
