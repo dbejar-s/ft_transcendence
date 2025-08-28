@@ -73,35 +73,6 @@ export default function TournamentList({ refreshKey = 0 }: { refreshKey?: number
     fetchTournaments();
   }, [refreshKey]);
 
-  // Delete tournament
-  const deleteTournament = async (tournamentId: number) => {
-    try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        alert('You must be logged in to delete a tournament');
-        return;
-      }
-
-      const response = await fetch(`http://localhost:3001/api/tournaments/${tournamentId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      
-      if (response.ok) {
-        await fetchTournaments() // Refresh the list
-      } else {
-        const error = await response.json()
-        console.error('Error deleting tournament:', error.message)
-        alert('Error deleting tournament: ' + error.message)
-      }
-    } catch (error) {
-      console.error('Error deleting tournament:', error)
-      alert('Error deleting tournament')
-    }
-  }
-
   // Bracket
   const handleViewBracket = (tournamentId: number) => {
     setBracketTournamentId(tournamentId);
@@ -160,18 +131,6 @@ export default function TournamentList({ refreshKey = 0 }: { refreshKey?: number
                     className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors font-semibold"
                   >
                     {translate("viewBracket") || "View Bracket"}
-                  </button>
-                )}
-
-                {/* Check if current user is the creator to show delete button */}
-                {participantsByTournament[tournament.id] && 
-                 participantsByTournament[tournament.id].length > 0 && 
-                 participantsByTournament[tournament.id][0]?.id === player?.id && (
-                  <button
-                    onClick={() => deleteTournament(tournament.id)}
-                    className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors font-semibold"
-                  >
-                    {translate("deleteTournament") || "Delete Tournament"}
                   </button>
                 )}
               </div>
