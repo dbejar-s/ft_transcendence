@@ -25,7 +25,12 @@ Pong_on_steroids
    docker-compose up --build
    ```
 
-4. **Access the application**
+4. **Accept SSL certificates (IMPORTANT!)**
+   - Visit https://localhost:3001 and accept the certificate warning
+   - Visit https://localhost:5173 and accept the certificate warning
+   - See [SSL-SETUP.md](SSL-SETUP.md) for detailed instructions
+
+5. **Access the application**
    - Frontend: https://localhost:5173
    - Backend API: https://localhost:3001
 
@@ -54,8 +59,14 @@ See [SSL-SETUP.md](SSL-SETUP.md) for SSL certificate information.
 
 ## 🐛 Troubleshooting
 
-### Certificate Issues
-If you encounter SSL certificate errors on a new machine:
+### Certificate Issues (ERR_CERT_AUTHORITY_INVALID)
+This is normal for self-signed certificates. You MUST accept the certificates:
+1. Visit https://localhost:3001 → Click "Advanced" → "Proceed to localhost (unsafe)"
+2. Visit https://localhost:5173 → Click "Advanced" → "Proceed to localhost (unsafe)"
+3. Refresh the application page
+
+### Complete Certificate Reset
+If you encounter persistent SSL issues:
 ```bash
 rm -rf backend/certs frontend/certs
 ./generate-certs.sh
