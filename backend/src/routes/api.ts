@@ -26,13 +26,13 @@ export async function apiRoutes(fastify: FastifyInstance) {
           u1.username as player1Name,
           COALESCE(u2.username, 'Guest') as player2Name,
           u1.avatar as player1Avatar,
-          COALESCE(u2.avatar, '/default-avatar.png') as player2Avatar,
-          CASE 
+          COALESCE(u2.avatar, '/default-avatar.svg') as player2Avatar,
+          CASE
             WHEN m.player1Id = ? THEN COALESCE(u2.username, 'Guest')
             ELSE u1.username
           END as opponent,
           CASE 
-            WHEN m.player1Id = ? THEN COALESCE(u2.avatar, '/default-avatar.png')
+            WHEN m.player1Id = ? THEN COALESCE(u2.avatar, '/default-avatar.svg')
             ELSE u1.avatar
           END as opponentAvatar,
           CASE 

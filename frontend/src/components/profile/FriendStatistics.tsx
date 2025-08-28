@@ -23,7 +23,7 @@ export default function FriendStatistics({ friendId }: Props) {
 
   useEffect(() => {
     console.log('Fetching friend stats for user:', friendId);
-    statisticsService.getUserStats(friendId)
+    statisticsService.getPublicUserStats(friendId)
       .then(data => {
         console.log('Friend stats data received:', data);
         setStatsData(data);

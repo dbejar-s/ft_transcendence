@@ -242,7 +242,7 @@ export default async function friendRoutes(fastify: FastifyInstance) {
         const recentMatches = rawMatches.map((match) => {
           const isPlayer1 = match.player1Id === friendId;
           const opponent = isPlayer1 ? match.player2Name || 'Guest' : match.player1Name;
-          const opponentAvatar = isPlayer1 ? match.player2Avatar || '/default-avatar.png' : match.player1Avatar;
+          const opponentAvatar = isPlayer1 ? (match.player2Avatar || '/default-avatar.svg') : (match.player1Avatar || '/default-avatar.svg');
           const result = match.winnerId === friendId ? 'win' : 'loss';
           const score = `${match.player1Score}-${match.player2Score}`;
           

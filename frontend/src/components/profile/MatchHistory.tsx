@@ -22,7 +22,7 @@ export default function MatchHistory() {
       const transformedMatches = data.map((match: any) => ({
         id: match.id,
         opponent: match.opponent,
-        opponentAvatar: match.opponentAvatar || '/default-avatar.png',
+        opponentAvatar: match.opponentAvatar || '/default-avatar.svg',
         result: match.result.toLowerCase() as "win" | "loss",
         score: `${match.player1Score}-${match.player2Score}`,
         gameMode: match.gameMode,

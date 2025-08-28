@@ -33,7 +33,7 @@ export default function FriendMatchHistory({ recentMatches }: Props) {
         >
           <div className="flex items-center gap-4">
             <img
-              src={match.opponentAvatar}
+              src={match.opponentAvatar || '/default-avatar.svg'}
               alt={match.opponent}
               className="w-10 h-10 rounded-full border-2 border-[#FFFACD] object-cover"
             />

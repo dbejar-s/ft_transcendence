@@ -100,4 +100,13 @@ export const statisticsService = {
       }
     });
   },
+  
+  getPublicUserStats: (userId: string) => {
+    const token = localStorage.getItem('token');
+    return apiFetch(`/api/stats/public/${userId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+  },
 }

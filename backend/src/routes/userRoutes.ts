@@ -137,13 +137,13 @@ export async function userRoutes(fastify: FastifyInstance) {
                 ORDER BY m.playedAt DESC
                 LIMIT 10
             `);
-            const rawMatches = matchesStmt.all(id, id) as any[];
+            	const rawMatches = matchesStmt.all(id, id) as any[];
 
-            // Transform matches to include proper opponent info and estimated duration
+            	// Transform matches to include proper opponent info and estimated duration
             const recentMatches = rawMatches.map((match) => {
                 const isPlayer1 = match.player1Id === id;
                 const opponent = isPlayer1 ? match.player2Name || 'Guest' : match.player1Name;
-                const opponentAvatar = isPlayer1 ? match.player2Avatar || '/default-avatar.png' : match.player1Avatar;
+                const opponentAvatar = isPlayer1 ? (match.player2Avatar || '/default-avatar.svg') : (match.player1Avatar || '/default-avatar.svg');
                 const result = match.winnerId === id ? 'win' : 'loss';
                 const score = `${match.player1Score}-${match.player2Score}`;
                 
