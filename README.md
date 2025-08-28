@@ -1,7 +1,16 @@
 # ft_transcendence
 Pong_on_steroids
 
-## 🚀 Quick Setup
+## � Testing & Setup Guides
+
+> **🚨 IMPORTANT:** This project uses HTTPS with SSL certificates. Please follow the testing guide for proper setup.
+
+- **📖 [Complete Testing Guide](./TESTING-GUIDE.md)** - Comprehensive setup and troubleshooting
+- **⚡ [Quick Reference](./QUICK-REFERENCE.md)** - 30-second setup commands
+- **🧪 [SSL Test Page](./ssl-test.html)** - Interactive SSL certificate testing
+- **🔒 [Certificate Guide](./CERTIFICATE-ACCEPTANCE-GUIDE.md)** - SSL certificate acceptance instructions
+
+## �🚀 Quick Setup
 
 ### Prerequisites
 - Docker and Docker Compose
