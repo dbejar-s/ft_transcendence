@@ -73,36 +73,6 @@ export default function TournamentList({ refreshKey = 0 }: { refreshKey?: number
     fetchTournaments();
   }, [refreshKey]);
 
-  // Delete tournament
-  const deleteTournament = async (tournamentId: number) => {
-    try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        alert('You must be logged in to delete a tournament');
-        return;
-      }
-
-      const response = await fetch(`https://localhost:3001/api/tournaments/${tournamentId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      
-      if (response.ok) {
-        await fetchTournaments() // Refresh the list
-      } else {
-        const error = await response.json()
-        console.error('Error deleting tournament:', error.message)
-        alert('Error deleting tournament: ' + error.message)
-      }
-    } catch (error) {
-      console.error('Error deleting tournament:', error)
-      alert('Error deleting tournament')
-    }
-  }
-
-
   // Bracket
   const handleViewBracket = (tournamentId: number) => {
     setBracketTournamentId(tournamentId);
