@@ -123,5 +123,15 @@
     "twoFactorDescription": "Veuillez entrer le code à 6 chiffres que nous avons envoyé à votre adresse e-mail.",
     "enterCode": "Entrez le code à 6 chiffres",
     "enterUsername": "Entrez le nom d'utilisateur",
-    "noUsersFound": "Aucun utilisateur trouvé"
+    "noUsersFound": "Aucun utilisateur trouvé",
+	"pressPlay": "Appuyez sur ESPACE pour mettre en pause/reprendre le jeu à tout moment",
+	"tournamentMatch": "Partie de Tournoi",
+	"guestName": "Nom d'invité",
+	"finalScore": "Score Final",
+	"playAgain": "Rejouer",
+	"PAUSED": "PAUSE",
+	"pressResume": "Appuyez sur ESPACE ou cliquez sur Reprendre pour continuer",
+	"gamePaused": "Le jeu est temporairement en pause",
+	"pause": "Pause",
+	"resume": "Reprendre"
 }

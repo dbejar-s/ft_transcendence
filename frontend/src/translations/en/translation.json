@@ -123,5 +123,15 @@
     "twoFactorDescription": "Please enter the 6-digit code we sent to your email.",
     "enterCode": "Enter 6-digit code",
     "enterUsername": "Enter username",
-    "noUsersFound": "No users found"
+    "noUsersFound": "No users found",
+	"pressPlay": "Press SPACE to pause/resume the game anytime",
+	"tournamentMatch": "Tournament Match",
+	"guestName": "Guest name",
+	"finalScore": "Final Score",
+	"playAgain": "Play Again",
+	"PAUSED": "PAUSED",
+	"pressResume": "Press SPACE or click Resume to continue",
+	"gamePaused": "Game is temporarily paused",
+	"pause": "Pause",
+	"resume": "Resume"
 }

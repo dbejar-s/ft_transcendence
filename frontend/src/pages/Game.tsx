@@ -21,6 +21,7 @@ export default function Game() {
   const [wsPlayer2, setWsPlayer2] = useState<WebSocket | null>(null);
   const [scores, setScores] = useState({ p1: 0, p2: 0 });
   const [gameOver, setGameOver] = useState<null | { winner: string; loser: string; score: string }>(null);
+  const [isPaused, setIsPaused] = useState(false);
   const matchSavedRef = useRef(false);
 
   // Check if this is a tournament match
@@ -206,7 +207,8 @@ export default function Game() {
 
 	useEffect(() => {
 	return () => {
-		// Cette fonction s'exécute à chaque changement de route
+		// This will run when the component unmounts (e.g., navigating away)
+		// Send QUIT message to both WebSocket connections
 		if (wsPlayer1) {
 		const buffer = new ArrayBuffer(4);
 		const view = new DataView(buffer);
@@ -279,6 +281,28 @@ export default function Game() {
     }
   };
 
+  // Function to toggle pause
+  const togglePause = () => {
+    if (!gameOver && !showOverlay) {
+      setIsPaused(!isPaused);
+    }
+  };
+
+  // Handle spacebar press for pause
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (event.code === 'Space' && !gameOver && !showOverlay) {
+        event.preventDefault();
+        togglePause();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [isPaused, gameOver, showOverlay]);
+
   return (
     <div className="min-h-screen flex flex-col bg-[#2a2a27] relative overflow-hidden">      {showOverlay && (
         // Initial Overlay with instructions and guest name input
@@ -291,21 +315,24 @@ export default function Game() {
               {t("howToPlayText") ||
                 "Player 1: W/S Keys | Player 2: P/L Keys"}
             </p>
+            <p className="text-sm font-press text-yellow-300">
+              {t("pressPlay") || "Press SPACE to pause/resume the game anytime"}
+            </p>
 
             {/* Show tournament match info or guest name input */}
             {tournamentMatch ? (
               <div className="space-y-2">
-                <h3 className="text-xl font-press text-[#FFFACD]">Tournament Match</h3>
+                <h3 className="text-xl font-press text-[#FFFACD]">{t("tournamentMatch")}</h3>
                 <p className="text-lg font-press text-yellow-400">
                   {tournamentMatch.player1} vs {tournamentMatch.player2}
                 </p>
               </div>
             ) : (
               <div className="space-y-2">
-                <h2 className="text-2xl font-press text-[#FFFACD]">Guest name</h2>
+                <h2 className="text-2xl font-press text-[#FFFACD]">{t("guestName")}</h2>
                 <input
                   type="text"
-                  placeholder="Guest name"
+                  placeholder={t("guestName")}
                   value={guestName}
                   onChange={(e) => setGuestName(e.target.value)}
                   className="w-full px-4 py-2 font-press rounded-lg text-[#20201d] border border-[#FFFACD]"
@@ -325,15 +352,17 @@ export default function Game() {
 
       <div className="flex-grow flex flex-col items-center justify-center p-4 mb-2 text-3xl font-press text-[#FFFACD]">
 
-		{/* Scoreboard */}
-		{!showOverlay && !gameOver && (
-		<div className="absolute top-60 left-1/2 transform -translate-x-1/2 bg-[#20201d] text-[#FFFACD] px-6 py-2 rounded-lg font-press text-2xl shadow-lg border border-[#FFFACD]">
-			{players.player1.username} {scores.p1} - {scores.p2} {players.player2.username}
-		</div>
-		)}
-
         {!showOverlay && (
-          <GameDisplay wsP1={wsPlayer1} wsP2={wsPlayer2} onScoreUpdate={handleScoreUpdate} />
+          <GameDisplay 
+            wsP1={wsPlayer1} 
+            wsP2={wsPlayer2} 
+            onScoreUpdate={handleScoreUpdate}
+            isPaused={isPaused}
+            onTogglePause={togglePause}
+            scores={scores}
+            players={players}
+            gameOver={!!gameOver}
+          />
         )}
 
 		{/* Game Over Overlay */}
@@ -347,12 +376,12 @@ export default function Game() {
 			<p className="text-lg font-press">
 				Loser: <span className="text-red-400">{gameOver.loser}</span>
 			</p>
-			<p className="text-lg font-press">Final Score:  {gameOver.score}</p>
+			<p className="text-lg font-press">{t("finalScore")}:  {gameOver.score}</p>
 			<button
 				onClick={() => window.location.reload()}
 				className="font-press mt-4 bg-[#FFFACD] text-[#20201d] px-6 py-3 rounded-lg hover:bg-[#20201d] hover:text-[#FFFACD] border-2 border-transparent hover:border-[#FFFACD] transition"
 			>
-				Play Again
+				{t("playAgain") || "Play Again"}
 			</button>
 			</div>
 		</div>

@@ -1,9 +1,15 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 type GameDisplayProps = {
   wsP1: WebSocket | null;
   wsP2: WebSocket | null;
   onScoreUpdate?: (p1Score: number, p2Score: number) => void;
+  isPaused?: boolean;
+  onTogglePause?: () => void;
+  scores?: { p1: number; p2: number };
+  players?: { player1: { username: string }; player2: { username: string } };
+  gameOver?: boolean;
 };
 
 const FIELD_WIDTH = 1000;
@@ -19,7 +25,8 @@ type GameState = {
   p2PaddleY: number;
 };
 
-export default function GameDisplay({ wsP1, wsP2, onScoreUpdate }: GameDisplayProps) {
+export default function GameDisplay({ wsP1, wsP2, onScoreUpdate, isPaused = false, onTogglePause, scores, players, gameOver }: GameDisplayProps) {
+  const { t } = useTranslation();
   const [gameState, setGameState] = useState<GameState>({
     ballX: FIELD_WIDTH / 2,
     ballY: FIELD_HEIGHT / 2,
@@ -41,6 +48,9 @@ export default function GameDisplay({ wsP1, wsP2, onScoreUpdate }: GameDisplayPr
         const MESSAGE_TYPE_STATE_UPDATE = 3; // from defs.h
 
         if (messageType === MESSAGE_TYPE_STATE_UPDATE) {
+          // Don't update game state if paused
+          if (isPaused) return;
+          
           // Ensure the message has the full state update payload
           if (buffer.byteLength < 22) return; // 4 byte header + 18 byte body
 
@@ -111,7 +121,40 @@ export default function GameDisplay({ wsP1, wsP2, onScoreUpdate }: GameDisplayPr
       }
     };
 
+    // const sendPauseMessage = (ws: WebSocket | null) => {
+    //   if (ws && ws.readyState === WebSocket.OPEN) {
+    //     const buffer = new ArrayBuffer(4);
+    //     const view = new DataView(buffer);
+    //     const PROTOCOL_VERSION = 0;
+    //     const MESSAGE_TYPE_PAUSE = 1;
+    //     const bodyLength = 0;
+        
+    //     view.setUint8(0, PROTOCOL_VERSION);
+    //     view.setUint8(1, MESSAGE_TYPE_PAUSE);
+    //     view.setUint16(2, bodyLength, false); // Big Endian
+    //     ws.send(buffer);
+    //   }
+    // };
+
+    // const sendContinueMessage = (ws: WebSocket | null) => {
+    //   if (ws && ws.readyState === WebSocket.OPEN) {
+    //     const buffer = new ArrayBuffer(4);
+    //     const view = new DataView(buffer);
+    //     const PROTOCOL_VERSION = 0;
+    //     const MESSAGE_TYPE_START_CONTINUE = 0;
+    //     const bodyLength = 0;
+        
+    //     view.setUint8(0, PROTOCOL_VERSION);
+    //     view.setUint8(1, MESSAGE_TYPE_START_CONTINUE);
+    //     view.setUint16(2, bodyLength, false); // Big Endian
+    //     ws.send(buffer);
+    //   }
+    // };
+
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't send paddle moves if game is paused
+      if (isPaused) return;
+      
       if (e.repeat) return;
       const MOVE_DIRECTIONS = { DOWN: 1, UP: 2 };
 
@@ -132,6 +175,9 @@ export default function GameDisplay({ wsP1, wsP2, onScoreUpdate }: GameDisplayPr
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
+      // Don't send paddle moves if game is paused
+      if (isPaused) return;
+      
       const MOVE_DIRECTION_STOP = 0;
       switch (e.key) {
         case "w": case "W": case "s": case "S":
@@ -149,48 +195,125 @@ export default function GameDisplay({ wsP1, wsP2, onScoreUpdate }: GameDisplayPr
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [wsP1, wsP2]);
+  }, [wsP1, wsP2, isPaused]);
+
+  // Send pause/continue messages to server when isPaused changes
+  useEffect(() => {
+    if (wsP1 && wsP2) {
+      if (isPaused) {
+        // Send pause message to both WebSockets
+        const sendPauseMessage = (ws: WebSocket) => {
+          if (ws.readyState === WebSocket.OPEN) {
+            const buffer = new ArrayBuffer(4);
+            const view = new DataView(buffer);
+            const PROTOCOL_VERSION = 0;
+            const MESSAGE_TYPE_PAUSE = 1;
+            const bodyLength = 0;
+            
+            view.setUint8(0, PROTOCOL_VERSION);
+            view.setUint8(1, MESSAGE_TYPE_PAUSE);
+            view.setUint16(2, bodyLength, false); // Big Endian
+            ws.send(buffer);
+          }
+        };
+        sendPauseMessage(wsP1);
+        sendPauseMessage(wsP2);
+      } else {
+        // Send continue message to both WebSockets
+        const sendContinueMessage = (ws: WebSocket) => {
+          if (ws.readyState === WebSocket.OPEN) {
+            const buffer = new ArrayBuffer(4);
+            const view = new DataView(buffer);
+            const PROTOCOL_VERSION = 0;
+            const MESSAGE_TYPE_START_CONTINUE = 0;
+            const bodyLength = 0;
+            
+            view.setUint8(0, PROTOCOL_VERSION);
+            view.setUint8(1, MESSAGE_TYPE_START_CONTINUE);
+            view.setUint16(2, bodyLength, false); // Big Endian
+            ws.send(buffer);
+          }
+        };
+        sendContinueMessage(wsP1);
+        sendContinueMessage(wsP2);
+      }
+    }
+  }, [isPaused, wsP1, wsP2]);
 
   return (
-    <svg
-      width={FIELD_WIDTH}
-      height={FIELD_HEIGHT}
-      className="bg-[#20201d] border-2 border-[#FFFACD] rounded-xl"
-    >
-      {/* Center dashed line */}
-      <line
-        x1={FIELD_WIDTH / 2}
-        y1={0}
-        x2={FIELD_WIDTH / 2}
-        y2={FIELD_HEIGHT}
-        stroke="#FFFACD"
-        strokeWidth="3"
-        strokeDasharray="10,10"
-        opacity="0.6"
-      />
-      {/* Paddle 1 */}
-      <rect
-        x={10}
-        y={gameState.p1PaddleY - PADDLE_HEIGHT / 2}
-        width={PADDLE_WIDTH}
-        height={PADDLE_HEIGHT}
-        fill="#FFFACD"
-      />
-      {/* Paddle 2 */}
-      <rect
-        x={FIELD_WIDTH - 10 - PADDLE_WIDTH}
-        y={gameState.p2PaddleY - PADDLE_HEIGHT / 2}
-        width={PADDLE_WIDTH}
-        height={PADDLE_HEIGHT}
-        fill="#FFFACD"
-      />
-      {/* Ball */}
-      <circle
-        cx={gameState.ballX}
-        cy={gameState.ballY}
-        r={BALL_SIZE / 2}
-        fill="#FFFACD"
-      />
-    </svg>
+    <div className="relative flex flex-col items-center space-y-4">
+      {/* Scoreboard */}
+      {scores && players && !gameOver && (
+        <div className="bg-[#20201d] text-[#FFFACD] px-6 py-2 rounded-lg font-press text-2xl shadow-lg border border-[#FFFACD]">
+          {players.player1.username} {scores.p1} - {scores.p2} {players.player2.username}
+        </div>
+      )}
+
+      <div className="relative">
+        <svg
+          width={FIELD_WIDTH}
+          height={FIELD_HEIGHT}
+          className="bg-[#20201d] border-2 border-[#FFFACD] rounded-xl"
+        >
+          {/* Center dashed line */}
+          <line
+            x1={FIELD_WIDTH / 2}
+            y1={0}
+            x2={FIELD_WIDTH / 2}
+            y2={FIELD_HEIGHT}
+            stroke="#FFFACD"
+            strokeWidth="3"
+            strokeDasharray="10,10"
+            opacity="0.6"
+          />
+          {/* Paddle 1 */}
+          <rect
+            x={10}
+            y={gameState.p1PaddleY - PADDLE_HEIGHT / 2}
+            width={PADDLE_WIDTH}
+            height={PADDLE_HEIGHT}
+            fill="#FFFACD"
+          />
+          {/* Paddle 2 */}
+          <rect
+            x={FIELD_WIDTH - 10 - PADDLE_WIDTH}
+            y={gameState.p2PaddleY - PADDLE_HEIGHT / 2}
+            width={PADDLE_WIDTH}
+            height={PADDLE_HEIGHT}
+            fill="#FFFACD"
+          />
+          {/* Ball */}
+          <circle
+            cx={gameState.ballX}
+            cy={gameState.ballY}
+            r={BALL_SIZE / 2}
+            fill="#FFFACD"
+          />
+        </svg>
+
+        {/* Pause Overlay */}
+        {isPaused && (
+          <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col justify-center items-center rounded-xl">
+            <div className="text-[#FFFACD] text-center">
+              <h2 className="text-4xl font-press mb-4">⏸ {t("PAUSED")}</h2>
+              <p className="text-xl font-press mb-2">{t("pressResume")}</p>
+              <p className="text-sm font-press opacity-70">{t("gamePaused")}</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Pause Button - Now below the game */}
+      {onTogglePause && (
+        <button
+          onClick={onTogglePause}
+          className="px-4 py-2 bg-[#FFFACD] text-[#20201d] font-press rounded-lg hover:bg-[#e0e0a0] transition-colors flex items-center justify-center"
+        >
+          <span className="flex items-center">
+            {isPaused ? `▶ ${t("resume")}` : `⏸ ${t("pause")}`}
+          </span>
+        </button>
+      )}
+    </div>
   );
 }
