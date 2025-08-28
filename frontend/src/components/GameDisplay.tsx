@@ -12,8 +12,8 @@ type GameDisplayProps = {
   gameOver?: boolean;
 };
 
-const FIELD_WIDTH = 1000;
-const FIELD_HEIGHT = 600;
+const FIELD_WIDTH = 1020;
+const FIELD_HEIGHT = 620;
 const PADDLE_WIDTH = 20;
 const PADDLE_HEIGHT = 120;
 const BALL_SIZE = 20;
@@ -121,36 +121,6 @@ export default function GameDisplay({ wsP1, wsP2, onScoreUpdate, isPaused = fals
       }
     };
 
-    // const sendPauseMessage = (ws: WebSocket | null) => {
-    //   if (ws && ws.readyState === WebSocket.OPEN) {
-    //     const buffer = new ArrayBuffer(4);
-    //     const view = new DataView(buffer);
-    //     const PROTOCOL_VERSION = 0;
-    //     const MESSAGE_TYPE_PAUSE = 1;
-    //     const bodyLength = 0;
-        
-    //     view.setUint8(0, PROTOCOL_VERSION);
-    //     view.setUint8(1, MESSAGE_TYPE_PAUSE);
-    //     view.setUint16(2, bodyLength, false); // Big Endian
-    //     ws.send(buffer);
-    //   }
-    // };
-
-    // const sendContinueMessage = (ws: WebSocket | null) => {
-    //   if (ws && ws.readyState === WebSocket.OPEN) {
-    //     const buffer = new ArrayBuffer(4);
-    //     const view = new DataView(buffer);
-    //     const PROTOCOL_VERSION = 0;
-    //     const MESSAGE_TYPE_START_CONTINUE = 0;
-    //     const bodyLength = 0;
-        
-    //     view.setUint8(0, PROTOCOL_VERSION);
-    //     view.setUint8(1, MESSAGE_TYPE_START_CONTINUE);
-    //     view.setUint16(2, bodyLength, false); // Big Endian
-    //     ws.send(buffer);
-    //   }
-    // };
-
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't send paddle moves if game is paused
       if (isPaused) return;
@@ -251,6 +221,8 @@ export default function GameDisplay({ wsP1, wsP2, onScoreUpdate, isPaused = fals
 
       <div className="relative">
         <svg
+          x={-10}
+          y={-10}
           width={FIELD_WIDTH}
           height={FIELD_HEIGHT}
           className="bg-[#20201d] border-2 border-[#FFFACD] rounded-xl"
@@ -268,7 +240,7 @@ export default function GameDisplay({ wsP1, wsP2, onScoreUpdate, isPaused = fals
           />
           {/* Paddle 1 */}
           <rect
-            x={10}
+            x={0}
             y={gameState.p1PaddleY - PADDLE_HEIGHT / 2}
             width={PADDLE_WIDTH}
             height={PADDLE_HEIGHT}
@@ -276,7 +248,7 @@ export default function GameDisplay({ wsP1, wsP2, onScoreUpdate, isPaused = fals
           />
           {/* Paddle 2 */}
           <rect
-            x={FIELD_WIDTH - 10 - PADDLE_WIDTH}
+            x={FIELD_WIDTH - PADDLE_WIDTH}
             y={gameState.p2PaddleY - PADDLE_HEIGHT / 2}
             width={PADDLE_WIDTH}
             height={PADDLE_HEIGHT}
