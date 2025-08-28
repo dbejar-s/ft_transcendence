@@ -3,6 +3,7 @@ import { X } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import FriendMatchHistory from "./FriendMatchHistory"
 import FriendStatistics from "./FriendStatistics"
+import { getAvatarUrl } from "../../utils/avatarUtils"
 
 export interface Match {
   id: string
@@ -20,7 +21,6 @@ export interface Friend {
   username: string
   avatar: string
   status: "online" | "offline"
-  lastSeen?: string
   gamesPlayed?: number
   recentMatches?: Match[]
 }
@@ -46,7 +46,7 @@ export default function FriendProfile({ friend, onClose }: Props) {
 
       <div className="flex items-center justify-between gap-6">
         <img
-          src={friend.avatar}
+          src={getAvatarUrl(friend.avatar)}
           alt={friend.username}
           className="w-20 h-20 rounded-full border-2 border-[#FFFACD] object-cover"
         />
@@ -57,7 +57,7 @@ export default function FriendProfile({ friend, onClose }: Props) {
             <p>
               {friend.status === "online"
                 ? t("online")
-                : `${t("lastSeen")}: ${friend.lastSeen || "N/A"}`}
+                : `${t("offline")}`}
             </p>
             <p>{t("gamesPlayed")}: {friend.gamesPlayed || 0}</p>
           </div>

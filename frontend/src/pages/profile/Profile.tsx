@@ -26,13 +26,31 @@ export default function Profile() {
     return <div>{t("loading") || "Loading..."}</div>;
   }
 
+  // Fetch user data only on mount (not constantly)
   useEffect(() => {
-    fetch("/api/users/current", {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-    })
-      .then(res => res.json())
-      .then(user => setPlayer(user));
-  }, []);
+    const fetchCurrentUser = async () => {
+      try {
+        const res = await fetch(`http://localhost:3001/api/users/current?ts=${Date.now()}`, {
+          headers: { 
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+        
+        if (res.ok) {
+          const user = await res.json();
+          setPlayer(user);
+        }
+      } catch (error) {
+        console.error('Error fetching current user:', error);
+      }
+    };
+    
+    fetchCurrentUser();
+  }, []); // Empty dependency array - only runs on mount
+
+  // Remove the second useEffect that was constantly refreshing when switching to user tab
 
   useEffect(() => {
 	if (player?.language) {
@@ -90,11 +108,24 @@ export default function Profile() {
 				language: player.language || 'en'
 			}}
 			onProfileUpdated={async () => {
-				const res = await fetch(`/api/users/current?ts=${Date.now()}`, {
-					headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-				});
-				const user = await res.json();
-				setPlayer(user);
+				// Refresh user data only when profile is actually updated
+				try {
+					const res = await fetch(`http://localhost:3001/api/users/current?ts=${Date.now()}`, {
+						headers: { 
+							Authorization: `Bearer ${localStorage.getItem("token")}`,
+							'Cache-Control': 'no-cache',
+							'Pragma': 'no-cache'
+						}
+					});
+					
+					if (res.ok) {
+						const user = await res.json();
+						console.log('Profile updated, refreshing user data:', user);
+						setPlayer(user);
+					}
+				} catch (error) {
+					console.error('Error refreshing user data after profile update:', error);
+				}
 			}}
 		  />
         )}

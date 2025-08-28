@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
 import { Pencil, Upload, Eye, EyeOff } from "lucide-react"
 import { predefinedAvatars } from "./ProfileUtils"
+import { getAvatarUrl } from "../../utils/avatarUtils"
 
 interface UserInfoProps {
   initialUser: { id: string; avatar: string; username: string; email: string; language: string }
@@ -28,6 +29,12 @@ export default function UserInfo({ initialUser, onProfileUpdated }: UserInfoProp
   const [languageValue, setLanguageValue] = useState(initialUser.language)
   const [isEditingLanguage, setIsEditingLanguage] = useState(false)
 
+  // Debug: log predefined avatars
+  console.log('🎭 Predefined avatars:', predefinedAvatars)
+  console.log('👤 Initial user avatar:', initialUser.avatar)
+  console.log('📂 Current avatarFile:', avatarFile)
+  console.log('🖼️ Current avatarPreview:', avatarPreview)
+
   useEffect(() => {
     if (initialUser) {
       setUserData(initialUser)
@@ -40,7 +47,7 @@ export default function UserInfo({ initialUser, onProfileUpdated }: UserInfoProp
 
   const validateField = (field: string, value: string) => {
     if (field === "username") {
-      if (value.length < 3) return t("usernameMinLength") || "Username must be at least 3 characters"
+      if (value.length < 2) return t("usernameMinLength") || "Username must be at least 2 characters"
       if (value.length > 20) return t("usernameMaxLength") || "Username must be less than 20 characters"
     }
     if (field === "email") {
@@ -48,7 +55,7 @@ export default function UserInfo({ initialUser, onProfileUpdated }: UserInfoProp
       if (!emailRegex.test(value)) return t("invalidEmail") || "Invalid email format"
     }
     if (field === "password") {
-      if (value.length < 6) return t("passwordMinLength") || "Password must be at least 6 characters"
+      if (value.length < 4) return t("passwordMinLength") || "Password must be at least 4 characters"
     }
     return ""
   }
@@ -183,19 +190,7 @@ export default function UserInfo({ initialUser, onProfileUpdated }: UserInfoProp
       {/* Avatar + Username */}
       <div className="relative flex flex-col items-center space-y-4">
         <img
-			src={
-				avatarPreview
-				? avatarPreview
-				: typeof avatarFile === "string"
-					? avatarFile.startsWith("/uploads/")
-					? avatarFile
-					: avatarFile.startsWith("/assets/Profile/")
-						? avatarFile 
-						: require(`../../assets/Profile/${avatarFile}`)
-					: avatarFile
-					? URL.createObjectURL(avatarFile)
-					: "/default-avatar.png"
-			}
+			src={getAvatarUrl(avatarPreview || avatarFile)}
 			alt="Avatar"
 			className="w-20 h-20 rounded-full border-2 border-[#FFFACD] object-cover"
 		/>

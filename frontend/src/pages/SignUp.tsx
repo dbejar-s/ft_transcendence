@@ -30,18 +30,8 @@ export default function SignUp() {
     setLoading(true);
 
     try {
-      // Step 1: register user
-      await authService.register(email, username, password);
-
-      // Step 2: login to get 2FA code sent
-      const { userId } = await authService.login(email, password);
-
-      // Step 3: ask the user to input the 2FA code (you need a small form or prompt)
-      const code = prompt('Enter the 2FA code sent to your email');
-      if (!code) throw new Error('2FA code required');
-
-      // Step 4: verify 2FA
-      const { token, user } = await authService.verify2FA(userId, code);
+      // Register user and get immediate login (no 2FA for registration)
+      const { token, user } = await authService.register(email, username, password);
 
       localStorage.setItem('token', token);
       login(user);
