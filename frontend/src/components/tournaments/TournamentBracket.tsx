@@ -94,39 +94,76 @@ export default function TournamentBracket({ tournamentId, onClose }: TournamentB
     // Navigate to game with tournament match data
     navigate('/game', { state: { tournamentMatch: matchData } });
   };
-
+  
   const submitResult = async (matchId: number) => {
-    const player1Score = prompt('Enter Player 1 score:');
-    const player2Score = prompt('Enter Player 2 score:');
-    
-    if (player1Score === null || player2Score === null) return;
-    
-    const token = localStorage.getItem('token');
-    if (!token) return;
+	// Find the match to get player names
+	const match = currentMatches.find(m => m.id === matchId);
+	if (!match) {
+		alert("Match not found");
+		return;
+	}
 
-    try {
-      const response = await fetch(`http://localhost:3001/api/tournaments/${tournamentId}/matches/${matchId}/result`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          player1Score: parseInt(player1Score),
-          player2Score: parseInt(player2Score)
-        })
-      });
+	let player1Score: number | null = null;
+	let player2Score: number | null = null;
 
-      if (response.ok) {
-        fetchBracketData(); // Refresh data
-      } else {
-        const error = await response.json();
-        alert('Error submitting result: ' + error.message);
-      }
-    } catch (error) {
-      console.error('Error submitting result:', error);
-      alert('Error submitting result');
-    }
+	// Loop for Player 1 with their actual name
+	while (true) {
+		const input = prompt(`Enter ${match.player1Name} score (0–11):`);
+		if (input === null) return; // Cancel
+
+		const value = parseInt(input, 10);
+		if (!isNaN(value) && value >= 0 && value <= 11) {
+		player1Score = value;
+		break;
+		}
+		alert(`❌ Invalid score for ${match.player1Name}. Please enter a number between 0 and 11.`);
+	}
+
+	// Loop for Player 2 with their actual name
+	while (true) {
+		const input = prompt(`Enter ${match.player2Name} score (0–11):`);
+		if (input === null) return; // Cancel
+
+		const value = parseInt(input, 10);
+		if (!isNaN(value) && value >= 0 && value <= 11) {
+		player2Score = value;
+		break;
+		}
+		alert(`❌ Invalid score for ${match.player2Name}. Please enter a number between 0 and 11.`);
+	}
+
+	const token = localStorage.getItem("token");
+	if (!token) {
+		alert("No authentication token found.");
+		return;
+	}
+
+	try {
+		const response = await fetch(
+		`http://localhost:3001/api/tournaments/${tournamentId}/matches/${matchId}/result`,
+		{
+			method: "POST",
+			headers: {
+			"Content-Type": "application/json",
+			Authorization: `Bearer ${token}`,
+			},
+			body: JSON.stringify({
+			player1Score,
+			player2Score,
+			}),
+		}
+		);
+
+		if (response.ok) {
+		fetchBracketData(); // Refresh data
+		} else {
+		const error = await response.json();
+		alert("Error submitting result: " + error.message);
+		}
+	} catch (error) {
+		console.error("Error submitting result:", error);
+		alert("Error submitting result");
+	}
   };
 
   // Group matches by round for finished tournaments
