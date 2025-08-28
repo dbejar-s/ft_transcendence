@@ -92,7 +92,7 @@ export default function UserInfo({ initialUser, onProfileUpdated }: UserInfoProp
         languageValue
       )
 
-      const response = await fetch(`http://localhost:3001/api/users/${userData.id}`, {
+      const response = await fetch(`https://localhost:3001/api/users/${userData.id}`, {
         method: "PUT",
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("token")}`

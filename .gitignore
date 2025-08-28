@@ -25,6 +25,13 @@ pnpm-debug.log
 .env.test
 .env.production
 
+# SSL certificates (for local development)
+/backend/certs/
+*.pem
+*.key
+*.crt
+*.cert
+
 # IDE and editor directories
 .vscode/
 .idea/

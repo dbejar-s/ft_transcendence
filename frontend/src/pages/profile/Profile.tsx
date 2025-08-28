@@ -30,7 +30,7 @@ export default function Profile() {
   useEffect(() => {
     const fetchCurrentUser = async () => {
       try {
-        const res = await fetch(`http://localhost:3001/api/users/current?ts=${Date.now()}`, {
+        const res = await fetch(`https://localhost:3001/api/users/current?ts=${Date.now()}`, {
           headers: { 
             Authorization: `Bearer ${localStorage.getItem("token")}`,
             'Cache-Control': 'no-cache',
@@ -110,7 +110,7 @@ export default function Profile() {
 			onProfileUpdated={async () => {
 				// Refresh user data only when profile is actually updated
 				try {
-					const res = await fetch(`http://localhost:3001/api/users/current?ts=${Date.now()}`, {
+					const res = await fetch(`https://localhost:3001/api/users/current?ts=${Date.now()}`, {
 						headers: { 
 							Authorization: `Bearer ${localStorage.getItem("token")}`,
 							'Cache-Control': 'no-cache',

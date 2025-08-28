@@ -35,11 +35,12 @@ WORKDIR /app
 
 COPY --from=build /app/dist /app/dist
 COPY --from=build /app/package.json /app/package.json
+COPY server.js /app/
+COPY certs /app/certs
 
-
-RUN npm install -g serve
+RUN npm install express@^4.18.0
 
 EXPOSE 5173
 
-# Start the server
-CMD ["serve", "-s", "dist", "-l", "5173"]
+# Start the HTTPS server
+CMD ["node", "server.js"]

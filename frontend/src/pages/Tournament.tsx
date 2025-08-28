@@ -40,7 +40,7 @@ export default function TournamentPage() {
       console.log('Creating matches for tournament:', tournamentId);
       
       // Récupérer tous les participants
-      const participantsRes = await fetch(`http://localhost:3001/api/tournaments/${tournamentId}/participants`);
+      const participantsRes = await fetch(`https://localhost:3001/api/tournaments/${tournamentId}/participants`);
       const participants = await participantsRes.json();
       
       console.log('Participants for matches:', participants);
@@ -108,7 +108,7 @@ export default function TournamentPage() {
     
     console.log('Creating match:', player1.username, 'vs', player2.username);
     
-    const createMatchRes = await fetch(`http://localhost:3001/api/tournaments/${tournamentId}/create-match`, {
+    const createMatchRes = await fetch(`https://localhost:3001/api/tournaments/${tournamentId}/create-match`, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
@@ -157,7 +157,7 @@ export default function TournamentPage() {
       }
 
       // Create tournament (automatically ongoing)
-      const res = await fetch("http://localhost:3001/api/tournaments", {
+      const res = await fetch("https://localhost:3001/api/tournaments", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -189,7 +189,7 @@ export default function TournamentPage() {
         let userId;
         
         // Try to find existing user first
-        const existingUserRes = await fetch(`http://localhost:3001/api/users/by-username/${name}`);
+        const existingUserRes = await fetch(`https://localhost:3001/api/users/by-username/${name}`);
         
         if (existingUserRes.ok) {
           // User exists, use their ID
@@ -198,7 +198,7 @@ export default function TournamentPage() {
           console.log('Found existing user:', existingUser.username, 'ID:', userId);
         } else {
           // User doesn't exist, create a new regular user (not temporary)
-          const userRes = await fetch("http://localhost:3001/api/users", {
+          const userRes = await fetch("https://localhost:3001/api/users", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ 
@@ -218,7 +218,7 @@ export default function TournamentPage() {
         }
         
         // Register the user in the tournament
-        const registerRes = await fetch(`http://localhost:3001/api/tournaments/${tournamentId}/register`, {
+        const registerRes = await fetch(`https://localhost:3001/api/tournaments/${tournamentId}/register`, {
           method: "POST",
           headers: { 
             "Content-Type": "application/json",

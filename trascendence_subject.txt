@@ -1,0 +1,106 @@
+Project Overview
+
+This project is called ft_transcendence and aims to test your ability to adapt and learn unfamiliar technologies through the development of a complex software project. The main deliverable is a website for a real-time, multiplayer Pong game with a variety of features and modular expansions. The project is divided into a mandatory base and a set of optional modules to further enhance the application.
+
+Mandatory Requirements
+Develop a website where users can play Pong live against each other.
+
+The initial implementation allows two players to play locally with the same keyboard (remote play is an upgrade).
+
+A tournament system is required, displaying the matchmaking, current, and upcoming matches.
+
+A registration system is required, where players enter an alias before joining a tournament. Aliases reset with new tournaments.
+
+The matchmaking system organizes participants and announces the next match.
+
+All players (including AI) must have identical paddle speed.
+
+The game must echo the classic Pong (1972) style, though graphical upgrades are allowed via modules.
+
+Strict rules for use of third-party libraries: you cannot use full-feature solutions, only minor-only libraries for unique subcomponents.
+
+Security Constraints
+All passwords must be hashed in the database.
+
+The site must be protected against SQL injections and XSS.
+
+HTTPS is mandatory for all connections (use wss for websockets).
+
+Input validation must be present, server-side if you use a backend.
+
+Credentials and sensitive values must be kept in a .env file and ignored by git.
+
+If using authentication tokens (JWT/2FA modules), routes must be properly protected.
+
+Modules (Choose 7 major modules minimum for full completion)
+Web Modules
+Major: Backend must be in Fastify with Node.js (if chosen).
+
+Minor: Frontend must be in TypeScript and Tailwind CSS (if chosen).
+
+Minor: Database must be SQLite across all backend modules (if chosen).
+
+Major: Blockchain score storage (Avalanche, Solidity in test environment).
+
+User Management
+Major: Standard user management – registration, login, user details, avatar upload, stats (wins/losses), match histories, friends status, etc.
+
+Major: Remote authentication using Google Sign-in.
+
+Gameplay & User Experience
+Major: Remote play - two users play Pong from different computers.
+
+Major: Multiplayer Pong – more than two players in a match, with custom board shapes.
+
+Major: Add another (non-Pong) game with user history and matchmaking.
+
+Minor: Game customization – power-ups, settings, maps.
+
+Major: Live chat – direct messages, block users, invitations, notifications.
+
+AI & Data Dashboards
+Major: AI opponent (cannot use A* algorithm). Must simulate keyboard input and make intelligent moves, only updating every second. Power-up support if included.
+
+Minor: Stats dashboards – user and game session statistics with charts/graphs.
+
+Cybersecurity
+Major: Web Application Firewall (WAF) and ModSecurity, HashiCorp Vault for secrets.
+
+Minor: GDPR compliance – anonymization, local data management, account deletion.
+
+Major: Two-Factor Authentication (2FA) and JSON Web Tokens (JWT).
+
+Devops
+Major: Log management with ELK (Elasticsearch, Logstash, Kibana).
+
+Minor: Monitoring with Prometheus and Grafana.
+
+Major: Backend designed as microservices.
+
+Graphics
+Major: Advanced 3D graphics with Babylon.js.
+
+Accessibility
+Minor: Support all device types (responsive design, touch, keyboard).
+
+Minor: Expand browser compatibility.
+
+Minor: Support at least three languages with a language selector.
+
+Minor: Accessibility features for visually impaired (screen readers, high-contrast, alt text, keyboard navigation).
+
+Minor: Server-Side Rendering (SSR) for improved SEO and performance.
+
+Server-Side Pong
+Major: Replace the basic game logic with a server-side Pong implementation and API endpoints.
+
+Major: CLI integration for Pong, allowing CLI players to match with web players in real time.
+
+Submission & Evaluation
+Only the content submitted in the repository will be evaluated.
+
+The bonus (additional modules) is only considered if the mandatory part is fully complete and bug-free.
+
+Strict limits on library use: allowed only for small, unique subcomponent tasks, not full feature/modules.
+
+This plain text version includes all core information, requirements, and module outlines needed for project planning and implementation

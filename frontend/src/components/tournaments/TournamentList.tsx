@@ -33,7 +33,7 @@ export default function TournamentList({ refreshKey = 0 }: { refreshKey?: number
   const fetchParticipants = async (tournamentId: number) => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`http://localhost:3001/api/tournaments/${tournamentId}/participants`, {
+      const response = await fetch(`https://localhost:3001/api/tournaments/${tournamentId}/participants`, {
         headers: token ? {
           'Authorization': `Bearer ${token}`
         } : {}
@@ -54,7 +54,7 @@ export default function TournamentList({ refreshKey = 0 }: { refreshKey?: number
 
   const fetchTournaments = async () => {
     try {
-      const res = await fetch("http://localhost:3001/api/tournaments");
+      const res = await fetch("https://localhost:3001/api/tournaments");
       const tournamentsData = await res.json();
       setTournaments(tournamentsData);
       
@@ -82,7 +82,7 @@ export default function TournamentList({ refreshKey = 0 }: { refreshKey?: number
         return;
       }
 
-      const response = await fetch(`http://localhost:3001/api/tournaments/${tournamentId}`, {
+      const response = await fetch(`https://localhost:3001/api/tournaments/${tournamentId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

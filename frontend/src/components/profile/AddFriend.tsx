@@ -49,7 +49,7 @@ export default function AddFriendOverlay({ userId, onClose, onFriendAdded }: Pro
       setSelected(user);
       
       // Then load detailed info with matches using the user profile route
-      const res = await fetch(`http://localhost:3001/api/users/${user.id}/profile`);
+      const res = await fetch(`https://localhost:3001/api/users/${user.id}/profile`);
       if (res.ok) {
         const detailedData = await res.json();
         setSelected(detailedData);
@@ -71,7 +71,7 @@ export default function AddFriendOverlay({ userId, onClose, onFriendAdded }: Pro
     const fetchUsers = async () => {
       try {
         setLoading(true)
-        const res = await fetch(`http://localhost:3001/api/users/${userId}/friends/search?q=${encodeURIComponent(query)}`)
+        const res = await fetch(`https://localhost:3001/api/users/${userId}/friends/search?q=${encodeURIComponent(query)}`)
         if (!res.ok) throw new Error("Failed to search users")
         const data: Friend[] = await res.json()
         setResults(data)
@@ -90,7 +90,7 @@ export default function AddFriendOverlay({ userId, onClose, onFriendAdded }: Pro
   const refreshSearch = async () => {
     if (!query.trim()) return;
     try {
-      const res = await fetch(`http://localhost:3001/api/users/${userId}/friends/search?q=${encodeURIComponent(query)}`);
+      const res = await fetch(`https://localhost:3001/api/users/${userId}/friends/search?q=${encodeURIComponent(query)}`);
       const data: Friend[] = await res.json();
       setResults(data);
     } catch (err) {
@@ -100,7 +100,7 @@ export default function AddFriendOverlay({ userId, onClose, onFriendAdded }: Pro
 
   const handleAddFriend = async (friend: Friend) => {
     try {
-      const url = `http://localhost:3001/api/users/${encodeURIComponent(userId)}/friends/${encodeURIComponent(friend.id)}`
+      const url = `https://localhost:3001/api/users/${encodeURIComponent(userId)}/friends/${encodeURIComponent(friend.id)}`
       const res = await fetch(url, { method: "POST" })
 
       if (!res.ok) {
