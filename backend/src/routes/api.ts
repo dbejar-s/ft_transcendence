@@ -9,6 +9,16 @@ import { db } from '../db/database';
 import { jwtMiddleware } from '../jwtMiddleware';
 
 export async function apiRoutes(fastify: FastifyInstance) {
+  // Health check endpoint (no auth required)
+  fastify.get('/health', async (request, reply) => {
+    return { 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      service: 'ft_transcendence_backend',
+      ssl: 'enabled'
+    };
+  });
+
   // Match routes (direct access)
   fastify.get('/matches', { preHandler: [jwtMiddleware] }, async (request, reply) => {
     const user = (request as any).user;

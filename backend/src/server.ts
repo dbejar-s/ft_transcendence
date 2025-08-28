@@ -58,8 +58,13 @@ const allowedOrigins = [
 
 fastify.register(cors, {
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, etc.)
+    // Allow requests with no origin (mobile apps, curl, file:// protocol, etc.)
     if (!origin) return callback(null, true);
+    
+    // Allow localhost origins (for development)
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return callback(null, true);
+    }
     
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
@@ -67,7 +72,9 @@ fastify.register(cors, {
       callback(new Error('Not allowed by CORS'), false);
     }
   },
-  credentials: true
+  credentials: true,
+  // Allow all headers for preflight requests
+  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization']
 });
 
 fastify.register(multipart);
