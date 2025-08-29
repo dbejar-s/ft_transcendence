@@ -7,7 +7,7 @@ import { predefinedAvatars } from "./ProfileUtils"
 import { getAvatarUrl } from "../../utils/avatarUtils"
 
 interface UserInfoProps {
-  initialUser: { id: string; avatar: string; username: string; email: string; language: string }
+  initialUser: { id: string; avatar: string; username: string; email: string; language: string; provider?: string }
   onProfileUpdated?: () => void
 }
 
@@ -28,6 +28,13 @@ export default function UserInfo({ initialUser, onProfileUpdated }: UserInfoProp
   const [showPassword, setShowPassword] = useState(false)
   const [languageValue, setLanguageValue] = useState(initialUser.language)
   const [isEditingLanguage, setIsEditingLanguage] = useState(false)
+
+  // Check if user is using Google provider (should not edit email/password)
+  const isGoogleUser = initialUser.provider === 'google'
+  
+  console.log('UserInfo - initialUser:', initialUser);
+  console.log('UserInfo - isGoogleUser:', isGoogleUser);
+  console.log('UserInfo - provider:', initialUser.provider);
 
 
   useEffect(() => {
@@ -103,11 +110,9 @@ export default function UserInfo({ initialUser, onProfileUpdated }: UserInfoProp
       const responseText = await response.text()
 
       if (!response.ok) {
-        console.error("Error response text:", responseText)
         throw new Error(responseText)
       }
 
-      console.log("Success response text:", responseText)
       const updatedUser = JSON.parse(responseText)
       
       if (field === "username") {
@@ -132,7 +137,6 @@ export default function UserInfo({ initialUser, onProfileUpdated }: UserInfoProp
 	  if (onProfileUpdated) onProfileUpdated();
 
     } catch (error) {
-      console.error("Update error:", error)
       const errorMsg = error instanceof Error ? error.message : "Update failed"
       
       if (field === "username") setUsernameError(errorMsg)
@@ -282,10 +286,15 @@ export default function UserInfo({ initialUser, onProfileUpdated }: UserInfoProp
               {emailError && <p className="text-red-400 text-xs font-press">{emailError}</p>}
             </div>
           ) : (
-            <span className="font-press truncate max-w-xs">{emailValue}</span>
+            <div className="flex flex-col items-center">
+              <span className="font-press truncate max-w-xs">{emailValue}</span>
+              {isGoogleUser && (
+                <span className="text-xs opacity-60 mt-1"></span>
+              )}
+            </div>
           )}
         </div>
-        {!isEditingEmail && (
+        {!isEditingEmail && !isGoogleUser && (
           <button
             onClick={() => setIsEditingEmail(true)}
             title={t("editEmail") || "Edit email"}
@@ -296,59 +305,61 @@ export default function UserInfo({ initialUser, onProfileUpdated }: UserInfoProp
         )}
       </div>
 
-      {/* Password */}
-      <div className="relative">
-        <label className="block text-sm mb-2 font-press opacity-80">{t("password") || "Password"}</label>
-        {isEditingPassword ? (
-          <div className="flex flex-col items-center gap-2 w-full">
-            <div className="relative w-full max-w-xs">
-              <input
-                type={showPassword ? "text" : "password"}
-                value={passwordValue}
-                onChange={(e) => setPasswordValue(e.target.value)}
-                placeholder={t("enterNewPassword") || "Enter new password"}
-                className="bg-[#FFFACD] text-[#20201d] p-2 rounded font-press w-full pr-10"
-                autoFocus
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-[#20201d] hover:text-opacity-70"
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
+      {/* Password - Hidden for Google users */}
+      {!isGoogleUser && (
+        <div className="relative">
+          <label className="block text-sm mb-2 font-press opacity-80">{t("password") || "Password"}</label>
+          {isEditingPassword ? (
+            <div className="flex flex-col items-center gap-2 w-full">
+              <div className="relative w-full max-w-xs">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={passwordValue}
+                  onChange={(e) => setPasswordValue(e.target.value)}
+                  placeholder={t("enterNewPassword") || "Enter new password"}
+                  className="bg-[#FFFACD] text-[#20201d] p-2 rounded font-press w-full pr-10"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-[#20201d] hover:text-opacity-70"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => saveField("password")}
+                  className="bg-[#FFFACD] text-[#20201d] px-4 py-2 rounded font-press hover:bg-opacity-90 transition-colors"
+                >
+                  {t("save") || "Save"}
+                </button>
+                <button
+                  onClick={() => cancelEdit("password")}
+                  className="text-red-400 underline text-sm font-press hover:text-red-300 transition-colors"
+                >
+                  {t("cancel") || "Cancel"}
+                </button>
+              </div>
+              {passwordError && <p className="text-red-400 text-xs font-press">{passwordError}</p>}
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => saveField("password")}
-                className="bg-[#FFFACD] text-[#20201d] px-4 py-2 rounded font-press hover:bg-opacity-90 transition-colors"
-              >
-                {t("save") || "Save"}
-              </button>
-              <button
-                onClick={() => cancelEdit("password")}
-                className="text-red-400 underline text-sm font-press hover:text-red-300 transition-colors"
-              >
-                {t("cancel") || "Cancel"}
-              </button>
+          ) : (
+            <div className="flex flex-col items-center gap-2">
+              <span className="font-press">••••••••</span>
             </div>
-            {passwordError && <p className="text-red-400 text-xs font-press">{passwordError}</p>}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-2">
-            <span className="font-press">••••••••</span>
-          </div>
-        )}
-        {!isEditingPassword && (
-          <button
-            onClick={() => setIsEditingPassword(true)}
-            title={t("changePassword") || "Change password"}
-            className="absolute top-8 right-0 text-[#FFFACD] hover:text-white transition-colors p-1 rounded-full hover:bg-[#FFFACD] hover:bg-opacity-20"
-          >
-            <Pencil size={16} />
-          </button>
-        )}
-      </div>
+          )}
+          {!isEditingPassword && (
+            <button
+              onClick={() => setIsEditingPassword(true)}
+              title={t("changePassword") || "Change password"}
+              className="absolute top-8 right-0 text-[#FFFACD] hover:text-white transition-colors p-1 rounded-full hover:bg-[#FFFACD] hover:bg-opacity-20"
+            >
+              <Pencil size={16} />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Language */}
       <div className="relative">

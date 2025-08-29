@@ -82,14 +82,23 @@ export async function userRoutes(fastify: FastifyInstance) {
 
         const userId = request.user.id
         const user = db.prepare(`
-        SELECT id, username, email, avatar, language
+        SELECT id, username, email, avatar, language, googleId
         FROM users WHERE id = ?
-        `).get(userId)
+        `).get(userId) as any
+
+        // Add provider information based on googleId
+        if (user && user.googleId) {
+            user.provider = 'google';
+            console.log('User with Google provider detected:', user.username, 'googleId:', user.googleId);
+        } else {
+            console.log('Regular user (no Google provider):', user?.username);
+        }
 
         if (!user) {
         return reply.status(404).send({ message: 'User not found' })
         }
 
+        console.log('Sending user data:', JSON.stringify(user, null, 2));
         reply.send(user)
     })
 
@@ -315,23 +324,3 @@ export async function userRoutes(fastify: FastifyInstance) {
         }
     });
 }
-
-// function updateUserStats(userId: string, tournamentId: string, isWinner: boolean, score: number) {
-//   try {
-//     // Update stats for ALL users (no more checking for temporary users)
-//     const statsUpdate = db.prepare(`
-//       INSERT OR REPLACE INTO user_stats (userId, tournaments_played, tournaments_won, total_score)
-//       VALUES (
-//         ?, 
-//         COALESCE((SELECT tournaments_played FROM user_stats WHERE userId = ?), 0) + 1,
-//         COALESCE((SELECT tournaments_won FROM user_stats WHERE userId = ?), 0) + ?,
-//         COALESCE((SELECT total_score FROM user_stats WHERE userId = ?), 0) + ?
-//       )
-//     `);
-//     statsUpdate.run(userId, userId, userId, isWinner ? 1 : 0, userId, score);
-    
-//     console.log(`Updated stats for user ${userId}: winner=${isWinner}, score=${score}`);
-//   } catch (error) {
-//     console.error('Error updating user stats:', error);
-//   }
-// }

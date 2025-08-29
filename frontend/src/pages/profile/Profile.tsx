@@ -14,6 +14,7 @@ interface Player {
   email: string;
   avatar: string;
   language?: string;
+  provider?: string;
   recentMatches?: Match[];
 }
 
@@ -105,7 +106,8 @@ export default function Profile() {
 				username: player.username,
 				email: player.email,
 				avatar: player.avatar,
-				language: player.language || 'en'
+				language: player.language || 'en',
+				provider: player.provider
 			}}
 			onProfileUpdated={async () => {
 				// Refresh user data only when profile is actually updated
