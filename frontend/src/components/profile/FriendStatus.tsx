@@ -1,32 +1,30 @@
 import React from "react";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import type { Friend } from "./FriendProfile";
 
 export function useFriendStatus(userId: string, setFriends: React.Dispatch<React.SetStateAction<Friend[]>>) {
-  const wsRef = useRef<WebSocket | null>(null);
-
   useEffect(() => {
-    const ws = new WebSocket(`ws://localhost:3001/ws?userId=${encodeURIComponent(userId)}`);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      console.log("WS connected for status updates");
-    };
-
-    ws.onmessage = (event) => {
-      const msg = JSON.parse(event.data);
-      if (msg.type === "statusUpdate") {
-        setFriends((prev: Friend[]) =>
-          prev.map((f: Friend) => f.id === msg.userId ? { ...f, status: msg.status } : f)
+    console.log("Setting up friend status listener for user:", userId);
+    
+    const handleFriendStatusUpdate = (event: CustomEvent) => {
+      const { userId: friendUserId, status } = event.detail;
+      console.log("Friend status update received:", friendUserId, status);
+      
+      setFriends((prev: Friend[]) => {
+        const updated = prev.map((f: Friend) => 
+          f.id === friendUserId ? { ...f, status } : f
         );
-      }
+        console.log("Updated friends list after status change");
+        return updated;
+      });
     };
 
-    ws.onclose = () => console.log("WS closed");
-    ws.onerror = (err) => console.error("WS error", err);
+    // Listen to global friend status updates
+    window.addEventListener('friendStatusUpdate', handleFriendStatusUpdate as EventListener);
 
     return () => {
-      ws.close();
+      console.log("Cleaning up friend status listener for user:", userId);
+      window.removeEventListener('friendStatusUpdate', handleFriendStatusUpdate as EventListener);
     };
-  }, [userId, setFriends]);
+  }, [userId]); // Only depend on userId
 }

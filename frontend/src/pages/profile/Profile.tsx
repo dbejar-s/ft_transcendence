@@ -14,6 +14,7 @@ interface Player {
   email: string;
   avatar: string;
   language?: string;
+  provider?: string;
   recentMatches?: Match[];
 }
 
@@ -21,42 +22,63 @@ export default function Profile() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"user" | "friends" | "matches" | "stats">("user");
   const { player, setPlayer } = usePlayer() as { player: Player, setPlayer: (p: Player) => void };
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasFetched, setHasFetched] = useState(false); // Prevent duplicate requests
 
-  if (!player) {
-    return <div>{t("loading") || "Loading..."}</div>;
-  }
-
-  // Fetch user data only on mount (not constantly)
+  // Always fetch fresh user data when Profile component mounts
   useEffect(() => {
+    // Prevent duplicate requests
+    if (hasFetched) return;
+    
     const fetchCurrentUser = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+
       try {
+        setIsLoading(true);
+        setHasFetched(true); // Mark as fetched before making request
+        
+        // Simple fetch with just Authorization header (backend already handles cache control)
         const res = await fetch(`https://localhost:3001/api/users/current?ts=${Date.now()}`, {
           headers: { 
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
+            Authorization: `Bearer ${token}`
           }
         });
         
         if (res.ok) {
           const user = await res.json();
-          setPlayer(user);
+          setPlayer(user); // This will update both context and localStorage
+        } else {
+          const errorText = await res.text();
+          console.error('Failed to load user profile:', res.status, errorText);
         }
       } catch (error) {
         console.error('Error fetching current user:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
     
     fetchCurrentUser();
-  }, []); // Empty dependency array - only runs on mount
+  }, [hasFetched]); // Only run when hasFetched changes
 
-  // Remove the second useEffect that was constantly refreshing when switching to user tab
-
+  // Set language when player data changes
   useEffect(() => {
 	if (player?.language) {
 		i18n.changeLanguage(player.language)
 	}
   }, [player?.language])
+
+  if (isLoading) {
+    return <div>{t("loading") || "Loading..."}</div>;
+  }
+
+  if (!player) {
+    return <div>{t("loading") || "Loading..."}</div>;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-[#2a2a27] text-[#FFFACD] p-4">
@@ -105,22 +127,23 @@ export default function Profile() {
 				username: player.username,
 				email: player.email,
 				avatar: player.avatar,
-				language: player.language || 'en'
+				language: player.language || 'en',
+				provider: player.provider
 			}}
 			onProfileUpdated={async () => {
 				// Refresh user data only when profile is actually updated
 				try {
+					const token = localStorage.getItem("token");
+					if (!token) return;
+					
 					const res = await fetch(`https://localhost:3001/api/users/current?ts=${Date.now()}`, {
 						headers: { 
-							Authorization: `Bearer ${localStorage.getItem("token")}`,
-							'Cache-Control': 'no-cache',
-							'Pragma': 'no-cache'
+							Authorization: `Bearer ${token}`
 						}
 					});
 					
 					if (res.ok) {
 						const user = await res.json();
-						console.log('Profile updated, refreshing user data:', user);
 						setPlayer(user);
 					}
 				} catch (error) {

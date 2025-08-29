@@ -210,6 +210,9 @@ export async function authRoutes(fastify: FastifyInstance) {
                 // User exists, log them in
                 const { password, ...userWithoutPassword } = user;
                 
+                // Add provider information for Google users
+                userWithoutPassword.provider = 'google';
+                
                 // Generate JWT token
                 const token = jwt.sign(
                     { id: user.id, username: user.username, email: user.email },
@@ -249,6 +252,10 @@ export async function authRoutes(fastify: FastifyInstance) {
                     return reply.status(500).send({ message: 'Failed to create user account' });
                 }
                 
+                // Add provider information for Google users
+                const { password, ...userWithoutPassword } = user;
+                userWithoutPassword.provider = 'google';
+                
                 // Generate JWT token for new user
                 const token = jwt.sign(
                     { id: user.id, username: user.username || name, email: user.email },
@@ -263,7 +270,6 @@ export async function authRoutes(fastify: FastifyInstance) {
                     userEmail: user.email
                 });
                 
-                const { password, ...userWithoutPassword } = user;
                 return reply.status(201).send({ message: 'Login successful', user: userWithoutPassword, token });
             }
         } catch (error) {
