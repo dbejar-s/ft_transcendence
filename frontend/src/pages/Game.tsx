@@ -120,8 +120,6 @@ export default function Game() {
 
   const startGame = async () => {
     // Allow guests to play - they will get a temporary profile created automatically
-    console.log('[GAME] startGame called. Current player:', player);
-    console.log('[GAME] player?.id:', player?.id);
     setShowOverlay(false);
     
     // Reset match saved state for new game
