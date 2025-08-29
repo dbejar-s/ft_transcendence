@@ -213,7 +213,7 @@ export async function userRoutes(fastify: FastifyInstance) {
            params.push(username);
         }
 
-        console.log('Received email:', email);
+        fastify.log.debug({ email }, 'Received email');
         if (email) {
            setClauses.push('email = ?');
            params.push(email);
