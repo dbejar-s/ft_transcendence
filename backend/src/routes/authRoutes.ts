@@ -55,29 +55,10 @@ export async function authRoutes(fastify: FastifyInstance) {
 
             //**** stmt.run(id, email, username, hashedPassword, DEFAULT_AVATAR);
 
-            
-            // Generate JWT immediately for new users (no 2FA required for registration)
-            const token = jwt.sign({ id, email: sanitizedEmail }, process.env.JWT_SECRET as string, { expiresIn: '1h' });
-            
-            // Return user info (without password) and token
-            const newUser = {
-                id,
-
-                email: sanitizedEmail,
-                username: sanitizedUsername,
-               //**** avatar: defaultAvatar,
-
-               //**** email,
-               //**** username,
-                avatar: DEFAULT_AVATAR,
-
-                language: 'en' // default language
-            };
-            
+            // Return success message without issuing a JWT token.
+            // Users must log in and complete 2FA before receiving a JWT.
             reply.status(201).send({ 
-                message: 'User registered successfully', 
-                token, 
-                user: newUser 
+                message: 'User registered successfully. Please log in to continue.'
             });
         } catch (error: any) {
             if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {

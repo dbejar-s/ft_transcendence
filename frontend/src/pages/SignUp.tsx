@@ -30,12 +30,11 @@ export default function SignUp() {
     setLoading(true);
 
     try {
-      // Register user and get immediate login (no 2FA for registration)
-      const { token, user } = await authService.register(email, username, password);
+      // Register user; backend no longer returns a token or user on signup
+      await authService.register(email, username, password);
 
-      localStorage.setItem('token', token);
-      login(user);
-      navigate('/completeprofile');
+      // Redirect to login page to proceed with 2FA-protected login
+      navigate('/register', { state: { registered: true, email } });
     } catch (err: any) {
       setError(err.message || t('signUpError'));
     } finally {
