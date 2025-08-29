@@ -152,6 +152,8 @@ export async function apiRoutes(fastify: FastifyInstance) {
           actualPlayer2Id = guestId;
           console.log(`[MATCH] Created guest player2: ${player2Name} with ID: ${actualPlayer2Id}`);
         }
+      } else if (player2Name === player1Name) {
+        console.log(`[MATCH] Warning: player2Name "${player2Name}" is the same as player1Name "${player1Name}". Skipping player2.`);
       }
 
       console.log(`[MATCH] Final player IDs: player1=${actualPlayer1Id}, player2=${actualPlayer2Id}`);

@@ -405,6 +405,16 @@ export default function Game() {
     }
   }, [player?.username, tournamentMatch]);
 
+  // Update player2 name when guestName changes (for non-tournament games)
+  useEffect(() => {
+    if (!tournamentMatch) {
+      setPlayers(prev => ({ 
+        ...prev, 
+        player2: { username: guestName } 
+      }));
+    }
+  }, [guestName, tournamentMatch]);
+
   return (
     <div className="min-h-screen flex flex-col bg-[#2a2a27] relative overflow-hidden">      {showOverlay && (
         // Initial Overlay with instructions and guest name input
