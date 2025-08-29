@@ -42,9 +42,9 @@ fastify.register(helmet, {
   },
 });
 
-// Rate limiting
+// Rate limiting - increased for development
 fastify.register(rateLimit, {
-  max: 100, // requests
+  max: 500, // requests (increased from 100)
   timeWindow: '1 minute'
 });
 
@@ -124,16 +124,20 @@ const start = async () => {
     wss.on("connection", (ws: WS, req) => {
       const url = new URL(req.url!, `https://${req.headers.host}`);
       const userId = url.searchParams.get("userId");
+      console.log("WebSocket connection attempt for userId:", userId);
       if (!userId) {
+        console.log("No userId provided, closing connection");
         ws.close();
         return;
       }
 
       if (!clients[userId]) clients[userId] = [];
       clients[userId].push(ws);
+      console.log("WebSocket connected for user:", userId, "Total connections:", clients[userId].length);
 
       ws.on("close", () => {
         clients[userId] = clients[userId].filter(s => s !== ws);
+        console.log("WebSocket disconnected for user:", userId);
         broadcastStatus(userId, "offline");
       });
 
@@ -141,13 +145,16 @@ const start = async () => {
     });
 
     function broadcastStatus(userId: string, status: "online" | "offline" | "busy") {
+      console.log("Broadcasting status update:", userId, status);
       db.prepare(`UPDATE users SET status = ? WHERE id = ?`).run(status, userId);
 
       const friends = db.prepare(
         `SELECT userId FROM friends WHERE friendId = ? AND status = 'accepted'`
       ).all(userId) as { userId: string }[];
+      console.log("Found friends to notify:", friends.length);
       for (const f of friends) {
         const sockets = clients[f.userId] || [];
+        console.log("Notifying friend:", f.userId, "with", sockets.length, "connections");
         sockets.forEach(ws =>
           ws.send(JSON.stringify({ type: "statusUpdate", userId, status }))
         );

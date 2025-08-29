@@ -36,7 +36,6 @@ export default function UserInfo({ initialUser, onProfileUpdated }: UserInfoProp
   console.log('UserInfo - isGoogleUser:', isGoogleUser);
   console.log('UserInfo - provider:', initialUser.provider);
 
-
   useEffect(() => {
     if (initialUser) {
       setUserData(initialUser)

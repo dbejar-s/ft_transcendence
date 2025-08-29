@@ -4,7 +4,6 @@ import { Search, UserPlus, UserMinus, Clock } from "lucide-react"
 import type { Friend } from "./FriendProfile"
 import FriendProfile from "./FriendProfile"
 import AddFriendOverlay from "./AddFriend"
-import { useFriendStatus } from "./FriendStatus"
 import { getAvatarUrl } from "../../utils/avatarUtils"
 
 interface Match {
@@ -31,7 +30,30 @@ export default function Friends({ userId }: Props) {
   const [showOverlay, setShowOverlay] = useState(false)
   const { t } = useTranslation()
 
-  useFriendStatus(userId, setFriends);
+  // Listen to global friend status updates
+  useEffect(() => {
+    console.log("Setting up global friend status listener in Friends component");
+    
+    const handleFriendStatusUpdate = (event: CustomEvent) => {
+      const { userId: friendUserId, status } = event.detail;
+      console.log("Friends component received status update:", friendUserId, status);
+      
+      setFriends((prev: Friend[]) => {
+        const updated = prev.map((f: Friend) => 
+          f.id === friendUserId ? { ...f, status } : f
+        );
+        console.log("Friends component updated friends list after status change");
+        return updated;
+      });
+    };
+
+    window.addEventListener('friendStatusUpdate', handleFriendStatusUpdate as EventListener);
+
+    return () => {
+      console.log("Cleaning up global friend status listener in Friends component");
+      window.removeEventListener('friendStatusUpdate', handleFriendStatusUpdate as EventListener);
+    };
+  }, []);
 
   // Load friends list from backend
   useEffect(() => {

@@ -1,12 +1,13 @@
 # ft_transcendence
 Pong_on_steroids
 
-## � Testing & Setup Guides
+## 📖 Documentation & Guides
 
 > **🚨 IMPORTANT:** This project uses HTTPS with SSL certificates. Please follow the testing guide for proper setup.
 
 - **📖 [Complete Testing Guide](./TESTING-GUIDE.md)** - Comprehensive setup and troubleshooting
 - **⚡ [Quick Reference](./QUICK-REFERENCE.md)** - 30-second setup commands
+- **🌐 [Browser Compatibility](./BROWSER-COMPATIBILITY.md)** - Cross-browser support and testing
 - **🧪 [SSL Test Page](./ssl-test.html)** - Interactive SSL certificate testing
 - **🔒 [Certificate Guide](./CERTIFICATE-ACCEPTANCE-GUIDE.md)** - SSL certificate acceptance instructions
 
@@ -56,6 +57,22 @@ This application includes comprehensive security compliance:
 
 See [SECURITY.md](SECURITY.md) for detailed security documentation.
 See [SSL-SETUP.md](SSL-SETUP.md) for SSL certificate information.
+
+## � Browser Support
+
+This application is designed to work on **all modern browsers**:
+- **Firefox** (90+) - Fully supported and tested
+- **Chrome** (90+) - Fully supported and tested  
+- **Edge** (90+) - Fully supported and tested
+- **Safari** (14+) - Fully supported and tested
+
+See [BROWSER-COMPATIBILITY.md](./BROWSER-COMPATIBILITY.md) for detailed compatibility information and browser-specific troubleshooting.
+
+### Cross-Browser Testing
+```bash
+# Test compatibility across browsers
+./test-browser-compatibility.sh
+```
 
 ## 🎮 Features
 
