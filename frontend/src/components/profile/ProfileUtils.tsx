@@ -1,5 +1,6 @@
 import type React from "react"
 import i18n from "i18next"
+import { apiFetch } from "../../services/api"
 
 export const DEFAULT_AVATAR = "/default-avatar.svg"
 
@@ -81,15 +82,10 @@ export const submitProfile = async (
       formData.append("avatarUrl", avatar)
     }
 
-    const res = await fetch("https://localhost:3001/api/users/complete-profile", {
+    await apiFetch("/api/users/complete-profile", {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${localStorage.getItem("token")}`
-      },
       body: formData,
     })
-
-    if (!res.ok) throw new Error("Username already taken or other error")
 
     i18n.changeLanguage(language)
     return true

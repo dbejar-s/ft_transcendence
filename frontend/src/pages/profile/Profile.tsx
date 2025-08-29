@@ -7,6 +7,7 @@ import Statistics from "../../components/profile/Statistics";
 import { usePlayer } from "../../context/PlayerContext";
 import type { Match } from "../../types/Match"
 import i18n from "../../i18n";
+import { apiFetch } from "../../services/api";
 
 interface Player {
   id: string;
@@ -41,20 +42,9 @@ export default function Profile() {
         setIsLoading(true);
         setHasFetched(true); // Mark as fetched before making request
         
-        // Simple fetch with just Authorization header (backend already handles cache control)
-        const res = await fetch(`https://localhost:3001/api/users/current?ts=${Date.now()}`, {
-          headers: { 
-            Authorization: `Bearer ${token}`
-          }
-        });
-        
-        if (res.ok) {
-          const user = await res.json();
-          setPlayer(user); // This will update both context and localStorage
-        } else {
-          const errorText = await res.text();
-          console.error('Failed to load user profile:', res.status, errorText);
-        }
+        // Simple fetch with apiFetch (backend already handles cache control)
+        const user = await apiFetch(`/api/users/current?ts=${Date.now()}`);
+        setPlayer(user); // This will update both context and localStorage
       } catch (error) {
         console.error('Error fetching current user:', error);
       } finally {
@@ -136,16 +126,8 @@ export default function Profile() {
 					const token = localStorage.getItem("token");
 					if (!token) return;
 					
-					const res = await fetch(`https://localhost:3001/api/users/current?ts=${Date.now()}`, {
-						headers: { 
-							Authorization: `Bearer ${token}`
-						}
-					});
-					
-					if (res.ok) {
-						const user = await res.json();
-						setPlayer(user);
-					}
+					const user = await apiFetch(`/api/users/current?ts=${Date.now()}`);
+					setPlayer(user);
 				} catch (error) {
 					console.error('Error refreshing user data after profile update:', error);
 				}

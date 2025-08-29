@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next"
+import { apiFetch } from "../../services/api";
 
 interface Match {
   id: number;
@@ -55,8 +56,7 @@ export default function TournamentBracket({ tournamentId, onClose }: TournamentB
   const fetchBracketData = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`https://localhost:3001/api/tournaments/${tournamentId}/bracket`);
-      const data = await response.json();
+      const data = await apiFetch(`/api/tournaments/${tournamentId}/bracket`);
       
       setTournament(data.tournament);
       setParticipants(data.participants || []); // Set participants from server
@@ -67,8 +67,7 @@ export default function TournamentBracket({ tournamentId, onClose }: TournamentB
       
       // If tournament is finished, fetch all matches
       if (data.tournament?.status === 'finished') {
-        const allMatchesResponse = await fetch(`https://localhost:3001/api/tournaments/${tournamentId}`);
-        const tournamentData = await allMatchesResponse.json();
+        const tournamentData = await apiFetch(`/api/tournaments/${tournamentId}`);
         setAllMatches(tournamentData.matches || []);
       }
       
@@ -141,27 +140,21 @@ export default function TournamentBracket({ tournamentId, onClose }: TournamentB
 	}
 
 	try {
-		const response = await fetch(
-		`https://localhost:3001/api/tournaments/${tournamentId}/matches/${matchId}/result`,
+		await apiFetch(
+		`/api/tournaments/${tournamentId}/matches/${matchId}/result`,
 		{
 			method: "POST",
 			headers: {
-			"Content-Type": "application/json",
-			Authorization: `Bearer ${token}`,
+				"Content-Type": "application/json",
 			},
 			body: JSON.stringify({
-			player1Score,
-			player2Score,
+				player1Score,
+				player2Score,
 			}),
 		}
 		);
 
-		if (response.ok) {
 		fetchBracketData(); // Refresh data
-		} else {
-		const error = await response.json();
-		alert("Error submitting result: " + error.message);
-		}
 	} catch (error) {
 		console.error("Error submitting result:", error);
 		alert("Error submitting result");

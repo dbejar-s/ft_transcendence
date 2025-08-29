@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next"
 import { Pencil, Upload, Eye, EyeOff } from "lucide-react"
 import { predefinedAvatars } from "./ProfileUtils"
 import { getAvatarUrl } from "../../utils/avatarUtils"
+import { apiFetch } from "../../services/api"
 
 interface UserInfoProps {
   initialUser: { id: string; avatar: string; username: string; email: string; language: string; provider?: string }
@@ -98,21 +99,12 @@ export default function UserInfo({ initialUser, onProfileUpdated }: UserInfoProp
         languageValue
       )
 
-      const response = await fetch(`https://localhost:3001/api/users/${userData.id}`, {
+      const responseText = await apiFetch(`/api/users/${userData.id}`, {
         method: "PUT",
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`
-        },
         body: formData
       })
-      
-      const responseText = await response.text()
 
-      if (!response.ok) {
-        throw new Error(responseText)
-      }
-
-      const updatedUser = JSON.parse(responseText)
+      const updatedUser = responseText
       
       if (field === "username") {
         setIsEditingUsername(false)

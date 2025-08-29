@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { usePlayer } from "../../context/PlayerContext"
 import TournamentBracket from "./TournamentBracket"
+import { apiFetch } from "../../services/api"
 
 // Tournament interface
 interface Tournament {
@@ -32,30 +33,17 @@ export default function TournamentList({ refreshKey = 0 }: { refreshKey?: number
 
   const fetchParticipants = async (tournamentId: number) => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`https://localhost:3001/api/tournaments/${tournamentId}/participants`, {
-        headers: token ? {
-          'Authorization': `Bearer ${token}`
-        } : {}
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        setParticipantsByTournament((prev: Record<number, any[]>) => ({ ...prev, [tournamentId]: data || [] }))
-      } else {
-        console.log(`No participants for tournament ${tournamentId}`)
-        setParticipantsByTournament((prev: Record<number, any[]>) => ({ ...prev, [tournamentId]: [] }))
-      }
+      const data = await apiFetch(`/api/tournaments/${tournamentId}/participants`)
+      setParticipantsByTournament((prev: Record<number, any[]>) => ({ ...prev, [tournamentId]: data || [] }))
     } catch (error) {
-      console.error('Error fetching participants:', error)
+      console.log(`No participants for tournament ${tournamentId}`)
       setParticipantsByTournament((prev: Record<number, any[]>) => ({ ...prev, [tournamentId]: [] }))
     }
   }
 
   const fetchTournaments = async () => {
     try {
-      const res = await fetch("https://localhost:3001/api/tournaments");
-      const tournamentsData = await res.json();
+      const tournamentsData = await apiFetch("/api/tournaments");
       setTournaments(tournamentsData);
       
       // Load participants for each tournament

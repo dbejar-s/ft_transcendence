@@ -4,6 +4,7 @@ import GameDisplay from "../components/GameDisplay";
 import { usePlayer } from "../context/PlayerContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useRef } from "react";
+import { apiFetch } from '../services/api';
 
 interface Player {
   id: string;
@@ -132,18 +133,21 @@ export default function Game() {
     }
 
     try {
-      const backendUrl = 'https://localhost:3001';
-      
       // For guests (no player.id), use a placeholder or guest endpoint
       const playerId = player?.id || 'guest';
-      const res = await fetch(`${backendUrl}/api/users/${playerId}/matches/start`, { method: "POST" });
+      
+      const data = await apiFetch(`/api/users/${playerId}/matches/start`, {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          player1Name: player?.username || 'Guest',
+          player2Name: guestName,
+          gameMode: tournamentMatch ? 'Tournament' : 'Casual'
+        })
+      });
 
-      if (!res.ok) {
-        console.error("Server error", res.status, await res.text());
-        return;
-      }
-
-      const data = await res.json();
       console.log("Match started, received WebSocket URLs:", data);
 
       // If a guest profile was created, update the player context
@@ -303,30 +307,17 @@ export default function Game() {
       console.log('[GAME] Current player:', { id: player?.id, username: player?.username });
       console.log('[GAME] Game players:', players);
       console.log('[GAME] Winner determination: gameWinner=' + winnerId + ', actualWinnerId=' + actualWinnerId);
-
-      // Prepare headers - only include auth token if player is logged in
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
-      
-      const token = localStorage.getItem('token');
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await fetch('https://localhost:3001/api/matches', {
+      await apiFetch('/api/matches', {
         method: 'POST',
-        headers,
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify(matchData)
       });
 
-      if (response.ok) {
-        console.log('Match saved successfully');
-        // Dispatch custom event to notify components to refresh
-        window.dispatchEvent(new CustomEvent('matchCompleted'));
-      } else {
-        console.error('Failed to save match:', await response.text());
-      }
+      console.log('Match saved successfully');
+      // Dispatch custom event to notify components to refresh
+      window.dispatchEvent(new CustomEvent('matchCompleted'));
     } catch (error) {
       console.error('Error saving match:', error);
     }
@@ -361,29 +352,15 @@ export default function Game() {
       if (token && !player) {
         try {
           console.log('[GAME] Token found but no player data, fetching from API...');
-          const response = await fetch('https://localhost:3001/api/users/current', {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
+          const userData = await apiFetch('/api/users/current');
+          console.log('[GAME] Fetched user data:', userData);
+          setPlayer({
+            id: userData.id,
+            username: userData.username,
+            email: userData.email,
+            avatar: userData.avatar || '/assets/Profile/men1.png',
+            language: userData.language || 'en'
           });
-          
-          if (response.ok) {
-            const userData = await response.json();
-            console.log('[GAME] Fetched user data:', userData);
-            setPlayer({
-              id: userData.id,
-              username: userData.username,
-              email: userData.email,
-              avatar: userData.avatar || '/assets/Profile/men1.png',
-              language: userData.language || 'en'
-            });
-          } else {
-            console.error('[GAME] Failed to fetch user data:', response.status);
-            // If token is invalid, remove it
-            if (response.status === 401) {
-              localStorage.removeItem('token');
-            }
-          }
         } catch (error) {
           console.error('[GAME] Error fetching user data:', error);
         }

@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next"
 import FriendMatchHistory from "./FriendMatchHistory"
 import FriendStatistics from "./FriendStatistics"
 import { getAvatarUrl } from "../../utils/avatarUtils"
+import { apiFetch } from "../../services/api"
 
 // ------------------ TYPES ------------------
 export interface Match {
@@ -49,11 +50,8 @@ export default function AddFriendOverlay({ userId, onClose, onFriendAdded }: Pro
       setSelected(user);
       
       // Then load detailed info with matches using the user profile route
-      const res = await fetch(`https://localhost:3001/api/users/${user.id}/profile`);
-      if (res.ok) {
-        const detailedData = await res.json();
-        setSelected(detailedData);
-      }
+      const detailedData = await apiFetch(`/api/users/${user.id}/profile`);
+      setSelected(detailedData);
       // If the details request fails, we still keep the basic user info
     } catch (error) {
       console.error('Error loading user details:', error);
@@ -71,9 +69,7 @@ export default function AddFriendOverlay({ userId, onClose, onFriendAdded }: Pro
     const fetchUsers = async () => {
       try {
         setLoading(true)
-        const res = await fetch(`https://localhost:3001/api/users/${userId}/friends/search?q=${encodeURIComponent(query)}`)
-        if (!res.ok) throw new Error("Failed to search users")
-        const data: Friend[] = await res.json()
+        const data: Friend[] = await apiFetch(`/api/users/${userId}/friends/search?q=${encodeURIComponent(query)}`)
         setResults(data)
       } catch (err) {
         console.error("Error fetching users:", err)
@@ -90,8 +86,7 @@ export default function AddFriendOverlay({ userId, onClose, onFriendAdded }: Pro
   const refreshSearch = async () => {
     if (!query.trim()) return;
     try {
-      const res = await fetch(`https://localhost:3001/api/users/${userId}/friends/search?q=${encodeURIComponent(query)}`);
-      const data: Friend[] = await res.json();
+      const data: Friend[] = await apiFetch(`/api/users/${userId}/friends/search?q=${encodeURIComponent(query)}`);
       setResults(data);
     } catch (err) {
       console.error(err);
@@ -100,13 +95,9 @@ export default function AddFriendOverlay({ userId, onClose, onFriendAdded }: Pro
 
   const handleAddFriend = async (friend: Friend) => {
     try {
-      const url = `https://localhost:3001/api/users/${encodeURIComponent(userId)}/friends/${encodeURIComponent(friend.id)}`
-      const res = await fetch(url, { method: "POST" })
-
-      if (!res.ok) {
-        const text = await res.text().catch(() => "")
-        throw new Error(`Add friend failed: ${res.status} ${text}`)
-      }
+      await apiFetch(`/api/users/${encodeURIComponent(userId)}/friends/${encodeURIComponent(friend.id)}`, { 
+        method: "POST" 
+      });
 
       onFriendAdded(friend)
       refreshSearch()

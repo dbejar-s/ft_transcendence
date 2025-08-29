@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { Calendar, Trophy, Target, Clock, Filter } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import type { Match } from "../../types/Match"
+import { apiFetch } from "../../services/api"
 
 export default function MatchHistory() {
   const [fetchedMatches, setFetchedMatches] = useState<Match[]>([])
@@ -12,12 +13,7 @@ export default function MatchHistory() {
 
   const fetchMatches = async () => {
     try {
-      const response = await fetch('https://localhost:3001/api/matches', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      })
-      const data = await response.json()
+      const data = await apiFetch('/api/matches')
       
       const transformedMatches = data.map((match: any) => ({
         id: match.id,

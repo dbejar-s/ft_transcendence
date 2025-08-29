@@ -5,6 +5,7 @@ import type { Friend } from "./FriendProfile"
 import FriendProfile from "./FriendProfile"
 import AddFriendOverlay from "./AddFriend"
 import { getAvatarUrl } from "../../utils/avatarUtils"
+import { apiFetch } from "../../services/api"
 
 interface Match {
   id: string;
@@ -57,11 +58,7 @@ export default function Friends({ userId }: Props) {
 
   // Load friends list from backend
   useEffect(() => {
-    fetch(`https://localhost:3001/api/users/${userId}/friends`)
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to fetch friends");
-        return res.json();
-      })
+    apiFetch(`/api/users/${userId}/friends`)
       .then((data: Friend[]) => setFriends(data))
       .catch(console.error);
   }, [userId]);
@@ -77,15 +74,11 @@ export default function Friends({ userId }: Props) {
   // delete friend
   const removeFriend = async (friendId: string) => {
     try {
-      const res = await fetch(`https://localhost:3001/api/users/${userId}/friends/${friendId}`, {
+      await apiFetch(`/api/users/${userId}/friends/${friendId}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error("Failed to remove friend");
 
-     const refreshed = await fetch(`https://localhost:3001/api/users/${userId}/friends`);
-      if (!refreshed.ok) throw new Error("Failed to refresh friends list");
-      const data: Friend[] = await refreshed.json();
-
+      const data: Friend[] = await apiFetch(`/api/users/${userId}/friends`);
       setFriends(data);
       if (selectedFriend?.id === friendId) setSelectedFriend(null);
     } catch (e) {
@@ -97,9 +90,7 @@ export default function Friends({ userId }: Props) {
   // load friend profile
   const loadFriendProfile = async (friendId: string) => {
     try {
-      const res = await fetch(`https://localhost:3001/api/users/${userId}/friends/${friendId}/details`);
-      if (!res.ok) throw new Error("Failed to fetch friend details");
-      const data: Friend = await res.json();
+      const data: Friend = await apiFetch(`/api/users/${userId}/friends/${friendId}/details`);
       setSelectedFriend(data);
     } catch (e) {
       console.error(e);

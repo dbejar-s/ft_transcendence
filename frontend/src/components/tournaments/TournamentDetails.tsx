@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { apiFetch } from "../../services/api";
 
 interface Match {
   id: number;
@@ -19,9 +20,12 @@ export default function TournamentDetails({ tournamentId }: TournamentDetailsPro
   const [matches, setMatches] = useState<Match[]>([]);
 
   useEffect(() => {
-    fetch(`https://localhost:3001/api/tournaments/${tournamentId}/matches`)
-      .then(res => res.json())
-      .then(setMatches);
+    apiFetch(`/api/tournaments/${tournamentId}/matches`)
+      .then(setMatches)
+      .catch(error => {
+        console.error('Error fetching tournament matches:', error);
+        setMatches([]);
+      });
   }, [tournamentId]);
 
   return (

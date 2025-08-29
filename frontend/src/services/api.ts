@@ -3,7 +3,7 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://localhost:3001';
 
 // A helper function for making fetch requests
-async function apiFetch(endpoint: string, options: RequestInit = {}) {
+export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
   
   // Get token from localStorage and add to headers if available

@@ -1,7 +1,8 @@
 import React, { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { usePlayer } from "../context/PlayerContext"
-import TournamentList from "../components/tournaments/TournamentList";
+import TournamentList from "../components/tournaments/TournamentList"
+import { apiFetch } from "../services/api"
 
 export default function TournamentPage() {
   const { t: translate } = useTranslation()
@@ -35,13 +36,12 @@ export default function TournamentPage() {
     });
   };
 
-  const createTournamentMatches = async (tournamentId: number, token: string) => {
+  const createTournamentMatches = async (tournamentId: number) => {
     try {
       console.log('Creating matches for tournament:', tournamentId);
       
       // Récupérer tous les participants
-      const participantsRes = await fetch(`https://localhost:3001/api/tournaments/${tournamentId}/participants`);
-      const participants = await participantsRes.json();
+      const participants = await apiFetch(`/api/tournaments/${tournamentId}/participants`);
       
       console.log('Participants for matches:', participants);
       
@@ -59,7 +59,7 @@ export default function TournamentPage() {
         ];
         
         for (const match of matches) {
-          await createSingleMatch(tournamentId, token, match.p1, match.p2, 1, 'round_1');
+          await createSingleMatch(tournamentId, match.p1, match.p2, 1, 'round_1');
         }
         console.log(`Created ${matches.length} matches for 3-player tournament`);
         return;
@@ -74,7 +74,7 @@ export default function TournamentPage() {
         ];
         
         for (const match of matches) {
-          await createSingleMatch(tournamentId, token, match.p1, match.p2, 1, 'round_1');
+          await createSingleMatch(tournamentId, match.p1, match.p2, 1, 'round_1');
         }
         console.log(`Created ${matches.length} matches for 4-player tournament`);
         return;
@@ -84,7 +84,7 @@ export default function TournamentPage() {
       const matchesCreated = [];
       for (let i = 0; i < participants.length; i++) {
         for (let j = i + 1; j < participants.length; j++) {
-          await createSingleMatch(tournamentId, token, participants[i], participants[j], 1, 'round_1');
+          await createSingleMatch(tournamentId, participants[i], participants[j], 1, 'round_1');
           matchesCreated.push({ p1: participants[i], p2: participants[j] });
         }
       }
@@ -96,7 +96,7 @@ export default function TournamentPage() {
   };
 
   // Fonction helper pour créer un match
-  const createSingleMatch = async (tournamentId: number, token: string, player1: any, player2: any, round: number, phase: string) => {
+  const createSingleMatch = async (tournamentId: number, player1: any, player2: any, round: number, phase: string) => {
     const matchData = {
       tournamentId: tournamentId,
       player1Id: player1.id,
@@ -108,16 +108,15 @@ export default function TournamentPage() {
     
     console.log('Creating match:', player1.username, 'vs', player2.username);
     
-    const createMatchRes = await fetch(`https://localhost:3001/api/tournaments/${tournamentId}/create-match`, {
+    const createMatchResult = await apiFetch(`/api/tournaments/${tournamentId}/create-match`, {
       method: "POST",
       headers: { 
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
+        "Content-Type": "application/json"
       },
       body: JSON.stringify(matchData)
     });
     
-    if (createMatchRes.ok) {
+    if (createMatchResult) {
       console.log('✅ Match created successfully');
     } else {
       console.error('❌ Failed to create match');
@@ -157,11 +156,10 @@ export default function TournamentPage() {
       }
 
       // Create tournament (automatically ongoing)
-      const res = await fetch("https://localhost:3001/api/tournaments", {
+      const res = await apiFetch("/api/tournaments", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
           name: newTournamentName,
@@ -189,16 +187,14 @@ export default function TournamentPage() {
         let userId;
         
         // Try to find existing user first
-        const existingUserRes = await fetch(`https://localhost:3001/api/users/by-username/${name}`);
-        
-        if (existingUserRes.ok) {
+        try {
+          const existingUser = await apiFetch(`/api/users/by-username/${name}`);
           // User exists, use their ID
-          const existingUser = await existingUserRes.json();
           userId = existingUser.id;
           console.log('Found existing user:', existingUser.username, 'ID:', userId);
-        } else {
+        } catch (error) {
           // User doesn't exist, create a new regular user (not temporary)
-          const userRes = await fetch("https://localhost:3001/api/users", {
+          const user = await apiFetch("/api/users", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ 
@@ -207,35 +203,24 @@ export default function TournamentPage() {
             }),
           });
           
-          if (!userRes.ok) {
-            console.error('Failed to create user:', name);
-            continue;
-          }
-          
-          const user = await userRes.json();
           userId = user.id;
           console.log('Created new user:', user.username, 'ID:', userId);
         }
         
         // Register the user in the tournament
-        const registerRes = await fetch(`https://localhost:3001/api/tournaments/${tournamentId}/register`, {
+        await apiFetch(`/api/tournaments/${tournamentId}/register`, {
           method: "POST",
           headers: { 
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
+            "Content-Type": "application/json"
           },
           body: JSON.stringify({ userId: userId }),
         });
         
-        if (!registerRes.ok) {
-          console.error('Failed to register user:', name);
-        } else {
-          console.log('Registered user:', name, 'in tournament');
-        }
+        console.log('Registered user:', name, 'in tournament');
       }
 
       // Create matches automatically after all participants are registered
-      await createTournamentMatches(tournamentId, token);
+      await createTournamentMatches(tournamentId);
 
       alert('Tournament created and started successfully!');
 
