@@ -94,8 +94,8 @@ export async function authRoutes(fastify: FastifyInstance) {
             return reply.status(401).send({ message: 'Invalid credentials' });
         }
 
-        // Generate 2FA code
-        const twofaCode = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
+        // Generate 2FA code using crypto.randomInt for stronger randomness
+        const twofaCode = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0'); // 6-digit code
         const twofaExpires = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes from now
         db.prepare('UPDATE users SET twofa_code = ?, twofa_expires = ?, twofa_enabled = 1 WHERE id = ?')
           .run(twofaCode, twofaExpires, user.id);

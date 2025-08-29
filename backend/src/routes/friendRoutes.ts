@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../db/database";
+import { jwtMiddleware } from "../jwtMiddleware";
 
 // ------------------ TYPES ------------------
 type UserIdParams = { userId: string };
@@ -27,10 +28,11 @@ export default async function friendRoutes(fastify: FastifyInstance) {
    * 📌 GET /api/friends/:userId
    * Returns the full list of friends for a given user.
    */
-  fastify.get(
+  fastify.get<{ Params: UserIdParams }>(
     "/",
+    { preHandler: [jwtMiddleware] },
     async (
-      request: FastifyRequest<{ Params: UserIdParams }>,
+      request,
       reply: FastifyReply
     ) => {
       const { userId } = request.params;
@@ -63,13 +65,11 @@ export default async function friendRoutes(fastify: FastifyInstance) {
    * - The current user (cannot friend yourself)
    * - Already added friends
    */
-	fastify.get(
+	fastify.get<{ Params: UserIdParams; Querystring: { q?: string } }>(
 	"/search",
+	{ preHandler: [jwtMiddleware] },
 	async (
-		request: FastifyRequest<{
-		Params: UserIdParams;
-		Querystring: { q?: string };
-		}>,
+		request,
 		reply: FastifyReply
 	) => {
 		const { userId } = request.params;
@@ -127,10 +127,11 @@ export default async function friendRoutes(fastify: FastifyInstance) {
    * 📌 POST /api/friends/:userId/:friendId
    * Add a new friend relation (bidirectional).
    */
-  fastify.post(
+  fastify.post<{ Params: UserIdParams & FriendIdParams }>(
     "/:friendId",
+    { preHandler: [jwtMiddleware] },
     async (
-      request: FastifyRequest<{ Params: UserIdParams & FriendIdParams }>,
+      request,
       reply: FastifyReply
     ) => {
       const { userId, friendId } = request.params;
@@ -168,10 +169,11 @@ export default async function friendRoutes(fastify: FastifyInstance) {
    * 📌 DELETE /api/friends/:userId/:friendId
    * Remove an existing friend relation (bidirectional).
    */
-  fastify.delete(
+  fastify.delete<{ Params: UserIdParams & FriendIdParams }>(
     "/:friendId",
+    { preHandler: [jwtMiddleware] },
     async (
-      request: FastifyRequest<{ Params: UserIdParams & FriendIdParams }>,
+      request,
       reply: FastifyReply
     ) => {
       const { userId, friendId } = request.params;
@@ -200,10 +202,11 @@ export default async function friendRoutes(fastify: FastifyInstance) {
    * 📌 GET /api/friends/:userId/:friendId/details
    * Get full profile of a friend + their last 10 matches.
    */
-  fastify.get(
+  fastify.get<{ Params: UserIdParams & FriendIdParams }>(
     "/:friendId/details",
+    { preHandler: [jwtMiddleware] },
     async (
-      request: FastifyRequest<{ Params: UserIdParams & FriendIdParams }>,
+      request,
       reply: FastifyReply
     ) => {
       const { friendId } = request.params;
