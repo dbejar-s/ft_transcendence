@@ -13,9 +13,9 @@ type GameDisplayProps = {
 };
 
 const FIELD_WIDTH = 1020;
-const FIELD_HEIGHT = 620;
+const FIELD_HEIGHT = 660;
 const PADDLE_WIDTH = 20;
-const PADDLE_HEIGHT = 120;
+const PADDLE_HEIGHT = 115;
 const BALL_SIZE = 20;
 
 type GameState = {
