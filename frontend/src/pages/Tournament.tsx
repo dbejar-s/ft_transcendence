@@ -156,7 +156,7 @@ export default function TournamentPage() {
       }
 
       // Create tournament (automatically ongoing)
-      const res = await apiFetch("/api/tournaments", {
+      const responseData = await apiFetch("/api/tournaments", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -169,15 +169,7 @@ export default function TournamentPage() {
         }),
       });
       
-      console.log('Response status:', res.status);
-      
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error('Error response:', errorText);
-        throw new Error(errorText);
-      }
-      
-      const { tournamentId } = await res.json();
+      const { tournamentId } = responseData;
       console.log('Tournament created with ID:', tournamentId);
 
       // Add other participants - check if they exist first
