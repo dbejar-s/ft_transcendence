@@ -9,13 +9,15 @@ interface Player {
   id: string;
   username: string;
   avatar?: string;
+  email?: string;
+  language?: string;
 }
 
 export default function Game() {
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
-  const { player } = usePlayer() as { player: Player };
+  const { player, setPlayer } = usePlayer() as { player: Player | null; setPlayer: (player: Player | null) => void };
   const [guestName, setGuestName] = useState("Guest");
   const [showOverlay, setShowOverlay] = useState(true);
   const [wsPlayer1, setWsPlayer1] = useState<WebSocket | null>(null);
@@ -117,11 +119,9 @@ export default function Game() {
 	};
 
   const startGame = async () => {
-    if (!player?.id) {
-      console.error("No player.id set");
-      alert("You must be logged in to start a game.");
-      return;
-    }
+    // Allow guests to play - they will get a temporary profile created automatically
+    console.log('[GAME] startGame called. Current player:', player);
+    console.log('[GAME] player?.id:', player?.id);
     setShowOverlay(false);
     
     // Reset match saved state for new game
@@ -135,7 +135,10 @@ export default function Game() {
 
     try {
       const backendUrl = 'https://localhost:3001';
-      const res = await fetch(`${backendUrl}/api/users/${player.id}/matches/start`, { method: "POST" });
+      
+      // For guests (no player.id), use a placeholder or guest endpoint
+      const playerId = player?.id || 'guest';
+      const res = await fetch(`${backendUrl}/api/users/${playerId}/matches/start`, { method: "POST" });
 
       if (!res.ok) {
         console.error("Server error", res.status, await res.text());
@@ -144,6 +147,20 @@ export default function Game() {
 
       const data = await res.json();
       console.log("Match started, received WebSocket URLs:", data);
+
+      // If a guest profile was created, update the player context
+      if (data.guestProfile && !player?.id) {
+        const guestPlayer = {
+          id: data.guestProfile.id,
+          username: data.guestProfile.username,
+          avatar: '/assets/Profile/men1.png', // Default avatar for guests
+          email: `${data.guestProfile.username}@guest.com`,
+          language: 'en'
+        };
+        setPlayer(guestPlayer);
+        setPlayers(prev => ({ ...prev, player1: { username: guestPlayer.username } }));
+        console.log('[GAME] Created guest profile:', guestPlayer);
+      }
 
       if (data.wsUrls && data.wsUrls.length >= 2) {
         const ws1 = new WebSocket(data.wsUrls[0]);
@@ -268,10 +285,8 @@ export default function Game() {
           }
         }
       } else {
-        // For casual games, winner is the current logged-in player if they won
-        if (player?.id) {
-          actualWinnerId = winnerId === 1 ? player.id : null;
-        }
+        // For casual games, send the game winner number (1 or 2) and let backend determine actual winner ID
+        actualWinnerId = winnerId; // Just pass through the game winner number
       }
       
       const matchData = {
@@ -279,7 +294,7 @@ export default function Game() {
         player2Name: players.player2.username, // Name of player2 in the game
         player1Score: p1Score, // Score of player1 in the game
         player2Score: p2Score, // Score of player2 in the game
-        winnerId: actualWinnerId,
+        winnerId: actualWinnerId, // For casual: 1 or 2. For tournament: actual player ID
         gameMode: tournamentMatch ? 'Tournament' : 'Casual',
         tournamentId: tournamentMatch?.tournamentId || null,
         playedAt: new Date().toISOString()
@@ -340,6 +355,55 @@ export default function Game() {
       window.removeEventListener('keydown', handleKeyPress);
     };
   }, [isPaused, gameOver, showOverlay]);
+
+  // Check if user has token but no player data - fetch from API
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const token = localStorage.getItem('token');
+      if (token && !player) {
+        try {
+          console.log('[GAME] Token found but no player data, fetching from API...');
+          const response = await fetch('https://localhost:3001/api/users/current', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (response.ok) {
+            const userData = await response.json();
+            console.log('[GAME] Fetched user data:', userData);
+            setPlayer({
+              id: userData.id,
+              username: userData.username,
+              email: userData.email,
+              avatar: userData.avatar || '/assets/Profile/men1.png',
+              language: userData.language || 'en'
+            });
+          } else {
+            console.error('[GAME] Failed to fetch user data:', response.status);
+            // If token is invalid, remove it
+            if (response.status === 401) {
+              localStorage.removeItem('token');
+            }
+          }
+        } catch (error) {
+          console.error('[GAME] Error fetching user data:', error);
+        }
+      }
+    };
+
+    fetchUserData();
+  }, [player, setPlayer]);
+
+  // Update player1 name when user data is loaded (for non-tournament games)
+  useEffect(() => {
+    if (player?.username && !tournamentMatch) {
+      setPlayers(prev => ({ 
+        ...prev, 
+        player1: { username: player.username } 
+      }));
+    }
+  }, [player?.username, tournamentMatch]);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#2a2a27] relative overflow-hidden">      {showOverlay && (

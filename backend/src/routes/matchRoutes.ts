@@ -1,6 +1,8 @@
 import { FastifyInstance } from 'fastify';
 import net from 'net';
 import { startWsProxy } from '../wsProxy';
+import { db } from '../db/database';
+import crypto from 'crypto';
 
 // This counter helps create unique WebSocket ports for each new game,
 // preventing conflicts if multiple games are running.
@@ -8,6 +10,26 @@ let gameIdCounter = 0;
 
 export async function matchRoutes(fastify: FastifyInstance) {
   fastify.post('/start', async (request, reply) => {
+    const params = request.params as any;
+    const userId = params.userId;
+
+    // If userId is "guest", create a temporary guest profile
+    let guestProfile = null;
+    if (userId === 'guest') {
+      const guestId = crypto.randomUUID();
+      const guestUsername = `Guest_${Date.now()}`;
+      
+      try {
+        const createUser = db.prepare('INSERT INTO users (id, username, isTemporary) VALUES (?, ?, 1)');
+        createUser.run(guestId, guestUsername);
+        guestProfile = { id: guestId, username: guestUsername };
+        console.log(`[MATCH] Created guest profile: ${guestUsername} with ID: ${guestId}`);
+      } catch (error) {
+        console.error('[MATCH] Error creating guest profile:', error);
+        return reply.status(500).send({ error: 'Failed to create guest profile' });
+      }
+    }
+
     return new Promise((resolve, reject) => {
       const client = new net.Socket();
       let resolved = false;
@@ -54,6 +76,7 @@ export async function matchRoutes(fastify: FastifyInstance) {
             reply.send({
               wsUrls: [`ws://localhost:${wsPort1}`, `ws://localhost:${wsPort2}`],
               tcpPorts: { player1: player1TcpPort, player2: player2TcpPort },
+              guestProfile: guestProfile // Include guest profile if created
             })
           );
         } else {

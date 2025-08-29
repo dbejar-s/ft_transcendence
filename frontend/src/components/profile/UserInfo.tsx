@@ -31,7 +31,10 @@ export default function UserInfo({ initialUser, onProfileUpdated }: UserInfoProp
 
   // Check if user is using Google provider (should not edit email/password)
   const isGoogleUser = initialUser.provider === 'google'
-
+  
+  console.log('UserInfo - initialUser:', initialUser);
+  console.log('UserInfo - isGoogleUser:', isGoogleUser);
+  console.log('UserInfo - provider:', initialUser.provider);
 
   useEffect(() => {
     if (initialUser) {
