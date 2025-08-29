@@ -170,7 +170,7 @@ export async function userRoutes(fastify: FastifyInstance) {
         }
     });
 
-    fastify.put('/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    fastify.put('/:id', { preHandler: [jwtMiddleware] }, async (request: FastifyRequest, reply: FastifyReply) => {
         const { id } = request.params as any;
 
         const parts = request.parts();

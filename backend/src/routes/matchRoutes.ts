@@ -1,13 +1,14 @@
 import { FastifyInstance } from 'fastify';
 import net from 'net';
 import { startWsProxy } from '../wsProxy';
+import { jwtMiddleware } from '../jwtMiddleware';
 
 // This counter helps create unique WebSocket ports for each new game,
 // preventing conflicts if multiple games are running.
 let gameIdCounter = 0;
 
 export async function matchRoutes(fastify: FastifyInstance) {
-  fastify.post('/start', async (request, reply) => {
+  fastify.post('/start', { preHandler: [jwtMiddleware] }, async (request, reply) => {
     return new Promise((resolve, reject) => {
       const client = new net.Socket();
       let resolved = false;
