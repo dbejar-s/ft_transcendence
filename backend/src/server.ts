@@ -42,9 +42,9 @@ fastify.register(helmet, {
   },
 });
 
-// Rate limiting
+// Rate limiting - increased for development
 fastify.register(rateLimit, {
-  max: 100, // requests
+  max: 500, // requests (increased from 100)
   timeWindow: '1 minute'
 });
 

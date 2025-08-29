@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import GameDisplay from "../components/GameDisplay";
 import { usePlayer } from "../context/PlayerContext";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useRef } from "react";
 
 interface Player {
@@ -14,6 +14,7 @@ interface Player {
 export default function Game() {
   const { t } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
   const { player } = usePlayer() as { player: Player };
   const [guestName, setGuestName] = useState("Guest");
   const [showOverlay, setShowOverlay] = useState(true);
@@ -103,10 +104,14 @@ export default function Game() {
 
 		setGameOver(gameOverData);
 
-		// Save the match to database only once and only if the current player is actually playing
-		if (!matchSavedRef.current && isCurrentPlayerPlaying()) {
-		matchSavedRef.current = true;
-		saveMatchResult(winnerId, finalP1Score, finalP2Score);
+		// Save the match to database
+		// For tournament matches: allow saving by anyone (participants or spectators)
+		// For casual matches: only save if the current player is actually playing
+		const shouldSaveMatch = tournamentMatch ? true : isCurrentPlayerPlaying();
+		
+		if (!matchSavedRef.current && shouldSaveMatch) {
+			matchSavedRef.current = true;
+			saveMatchResult(winnerId, finalP1Score, finalP2Score);
 		}
 	}
 	};
@@ -232,40 +237,73 @@ export default function Game() {
 
   // Function to save match result to database
   const saveMatchResult = async (winnerId: number, p1Score: number, p2Score: number) => {
-    if (!player?.id) return;
+    // For tournament matches, allow saving even if not a participant (for spectators/guests)
+    // For casual matches, only allow saving if logged in
+    if (!tournamentMatch && !player?.id) {
+      console.log('[GAME] Cannot save casual match - user not logged in');
+      return;
+    }
 
     try {
-      // For tournament matches, only save if the current player is actually playing
-      // For casual games, always save (current player is always player1)
+      // Determine the actual winner based on the game result
+      let actualWinnerId = null;
+      
+      if (tournamentMatch) {
+        // For tournaments, determine winner from tournament match data
+        if (winnerId === 1) {
+          // Player1 in the game won
+          // Find which actual player corresponds to game player1
+          if (players.player1.username === tournamentMatch.player1) {
+            actualWinnerId = tournamentMatch.player1Id;
+          } else if (players.player1.username === tournamentMatch.player2) {
+            actualWinnerId = tournamentMatch.player2Id;
+          }
+        } else if (winnerId === 2) {
+          // Player2 in the game won
+          // Find which actual player corresponds to game player2
+          if (players.player2.username === tournamentMatch.player1) {
+            actualWinnerId = tournamentMatch.player1Id;
+          } else if (players.player2.username === tournamentMatch.player2) {
+            actualWinnerId = tournamentMatch.player2Id;
+          }
+        }
+      } else {
+        // For casual games, winner is the current logged-in player if they won
+        if (player?.id) {
+          actualWinnerId = winnerId === 1 ? player.id : null;
+        }
+      }
       
       const matchData = {
-        player1Id: player.id, // Always use current player as player1 in our database
-        player1Name: player.username, // Use current player's username
-        player2Name: tournamentMatch ? 
-          (players.player1.username === player.username ? players.player2.username : players.player1.username) :
-          players.player2.username, // In casual, player2 is the guest
-        player1Score: tournamentMatch ?
-          (players.player1.username === player.username ? p1Score : p2Score) : p1Score,
-        player2Score: tournamentMatch ?
-          (players.player1.username === player.username ? p2Score : p1Score) : p2Score,
-        winnerId: 
-          (tournamentMatch ? 
-            ((players.player1.username === player.username && winnerId === 1) || 
-             (players.player2.username === player.username && winnerId === 2)) :
-            winnerId === 1) ? player.id : null,
+        player1Name: players.player1.username, // Name of player1 in the game
+        player2Name: players.player2.username, // Name of player2 in the game
+        player1Score: p1Score, // Score of player1 in the game
+        player2Score: p2Score, // Score of player2 in the game
+        winnerId: actualWinnerId,
         gameMode: tournamentMatch ? 'Tournament' : 'Casual',
         tournamentId: tournamentMatch?.tournamentId || null,
         playedAt: new Date().toISOString()
       };
 
-      console.log('Saving match result:', matchData);
+      console.log('[GAME] Saving match result:', matchData);
+      console.log('[GAME] Tournament match data:', tournamentMatch);
+      console.log('[GAME] Current player:', { id: player?.id, username: player?.username });
+      console.log('[GAME] Game players:', players);
+      console.log('[GAME] Winner determination: gameWinner=' + winnerId + ', actualWinnerId=' + actualWinnerId);
+
+      // Prepare headers - only include auth token if player is logged in
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      const token = localStorage.getItem('token');
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
 
       const response = await fetch('https://localhost:3001/api/matches', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
+        headers,
         body: JSON.stringify(matchData)
       });
 
@@ -311,24 +349,27 @@ export default function Game() {
             <h2 className="text-2xl font-press text-[#FFFACD]">
               {t("howToPlayTitle") || "How to Play"}
             </h2>
-            <p className="text-base font-press">
-              {t("howToPlayText") ||
-                "Player 1: W/S Keys | Player 2: P/L Keys"}
-            </p>
-            <p className="text-sm font-press text-yellow-300">
-              {t("pressPlay") || "Press SPACE to pause/resume the game anytime"}
-            </p>
 
             {/* Show tournament match info or guest name input */}
             {tournamentMatch ? (
               <div className="space-y-2">
-                <h3 className="text-xl font-press text-[#FFFACD]">{t("tournamentMatch")}</h3>
+                <h3 className="text-xl font-press text-[#FFFACD]">{t("movePaddle")} {tournamentMatch.player1} {t("w/s")} {tournamentMatch.player2} {t("score11")}</h3>
+				<p className="text-sm font-press text-yellow-300">
+				{t("pressPlay") || "Press SPACE to pause/resume the game anytime"}
+				</p>
                 <p className="text-lg font-press text-yellow-400">
                   {tournamentMatch.player1} vs {tournamentMatch.player2}
                 </p>
               </div>
             ) : (
               <div className="space-y-2">
+		      	<p className="text-base font-press">
+					{t("howToPlayText") ||
+					"Player 1: W/S Keys | Player 2: P/L Keys"}
+			  	</p>
+				<p className="text-sm font-press text-yellow-300">
+				  {t("pressPlay") || "Press SPACE to pause/resume the game anytime"}
+				</p>
                 <h2 className="text-2xl font-press text-[#FFFACD]">{t("guestName")}</h2>
                 <input
                   type="text"
@@ -377,12 +418,23 @@ export default function Game() {
 				Loser: <span className="text-red-400">{gameOver.loser}</span>
 			</p>
 			<p className="text-lg font-press">{t("finalScore")}:  {gameOver.score}</p>
-			<button
-				onClick={() => window.location.reload()}
-				className="font-press mt-4 bg-[#FFFACD] text-[#20201d] px-6 py-3 rounded-lg hover:bg-[#20201d] hover:text-[#FFFACD] border-2 border-transparent hover:border-[#FFFACD] transition"
-			>
-				{t("playAgain") || "Play Again"}
-			</button>
+			
+			{/* Different buttons for tournament vs casual games */}
+			{tournamentMatch ? (
+				<button
+					onClick={() => navigate('/tournament')}
+					className="font-press mt-4 bg-[#FFFACD] text-[#20201d] px-6 py-3 rounded-lg hover:bg-[#20201d] hover:text-[#FFFACD] border-2 border-transparent hover:border-[#FFFACD] transition"
+				>
+					{t("backToTournament") || "Back to Tournament"}
+				</button>
+			) : (
+				<button
+					onClick={() => window.location.reload()}
+					className="font-press mt-4 bg-[#FFFACD] text-[#20201d] px-6 py-3 rounded-lg hover:bg-[#20201d] hover:text-[#FFFACD] border-2 border-transparent hover:border-[#FFFACD] transition"
+				>
+					{t("playAgain") || "Play Again"}
+				</button>
+			)}
 			</div>
 		</div>
 		)}

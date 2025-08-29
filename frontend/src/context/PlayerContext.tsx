@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode, useEffect } from "react"
+import { createContext, useContext, useState, type ReactNode, useEffect, useCallback } from "react"
 import i18n from 'i18next';
 
 // The Player object that will be stored in our context and localStorage
@@ -27,23 +27,25 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [player, setPlayerState] = useState<Player | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // On initial load, try to get player data from localStorage
+  // On initial load, check if we have a token but DON'T load player data from localStorage
+  // Let the components fetch fresh data from the API instead
   useEffect(() => {
     try {
-      const storedPlayer = localStorage.getItem('player');
-      if (storedPlayer) {
-        const playerData = JSON.parse(storedPlayer);
-        setPlayerState(playerData);
+      const token = localStorage.getItem('token');
+      if (token) {
         setIsLoggedIn(true);
+        // Don't auto-load player data from localStorage
+        // Let components fetch fresh data from API
       }
     } catch (error) {
-      console.error("Could not parse player from localStorage", error);
+      console.error("Error checking login status", error);
+      localStorage.removeItem('token');
       localStorage.removeItem('player');
     }
   }, []);
 
   // A login function to centralize state and localStorage updates
-  const login = (playerData: Player) => {
+  const login = useCallback((playerData: Player) => {
     try {
       // Validate required fields
       if (!playerData || !playerData.id || !playerData.email || !playerData.username) {
@@ -55,27 +57,26 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setIsLoggedIn(true);
       localStorage.setItem('player', JSON.stringify(playerData));
       i18n.changeLanguage(playerData.language);
-      console.log('Player login successful:', { id: playerData.id, email: playerData.email });
     } catch (error) {
       console.error('Error in login function:', error);
     }
-  };
+  }, []);
 
   // A logout function
-  const logout = () => {
+  const logout = useCallback(() => {
     setPlayerState(null);
     setIsLoggedIn(false);
     localStorage.removeItem('player');
     localStorage.removeItem('token');
-  };
+  }, []);
   
-  const setPlayer = (playerData: Player | null) => {
+  const setPlayer = useCallback((playerData: Player | null) => {
     if (playerData) {
         login(playerData);
     } else {
         logout();
     }
-  }
+  }, [login, logout]);
 
   const value = { player, login, logout, isLoggedIn, setIsLoggedIn, setPlayer };
 

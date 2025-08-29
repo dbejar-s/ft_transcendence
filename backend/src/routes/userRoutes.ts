@@ -75,22 +75,32 @@ export async function userRoutes(fastify: FastifyInstance) {
     });
 
     fastify.get('/current', { preHandler: [jwtMiddleware] }, async (request: FastifyRequest, reply: FastifyReply) => {
-    	reply.header('Cache-Control', 'no-store');
+        // Prevent all forms of caching
+        reply.header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+        reply.header('Pragma', 'no-cache');
+        reply.header('Expires', '0');
+        
         if (!request.user) {
-        return reply.status(401).send({ message: 'Unauthorized' })
+            return reply.status(401).send({ message: 'Unauthorized' })
         }
 
         const userId = request.user.id
         const user = db.prepare(`
-        SELECT id, username, email, avatar, language
-        FROM users WHERE id = ?
-        `).get(userId)
+            SELECT id, username, email, avatar, language, googleId
+            FROM users WHERE id = ?
+        `).get(userId) as any
 
         if (!user) {
-        return reply.status(404).send({ message: 'User not found' })
+            return reply.status(404).send({ message: 'User not found' })
         }
 
-        reply.send(user)
+        // Add provider field based on googleId presence
+        const userWithProvider = {
+            ...user,
+            provider: user.googleId ? 'google' : 'email'
+        }
+
+        reply.send(userWithProvider)
     })
 
     fastify.get('/:id', (request: FastifyRequest, reply: FastifyReply) => {
@@ -192,7 +202,7 @@ export async function userRoutes(fastify: FastifyInstance) {
             }
         }
 
-        const { username, language, predefinedAvatar, password } = fields;
+        const { username, email, language, predefinedAvatar, password } = fields;
 
         const setClauses: string[] = [];
         const params: (string | undefined)[] = [];
@@ -201,6 +211,12 @@ export async function userRoutes(fastify: FastifyInstance) {
         if (username) {
            setClauses.push('username = ?');
            params.push(username);
+        }
+
+        console.log('Received email:', email);
+        if (email) {
+           setClauses.push('email = ?');
+           params.push(email);
         }
 
         console.log('Received language:', language);
@@ -230,9 +246,13 @@ export async function userRoutes(fastify: FastifyInstance) {
                 const stmt = db.prepare(`UPDATE users SET ${setClauses.join(', ')} WHERE id = ?`);
                 stmt.run(...params, id);
             } catch (error: any) {
-                // FIXED: Check for a unique constraint violation on the username
-                if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' && error.message.includes('users.username')) {
-                    return reply.status(409).send({ message: 'This username is already in use. Please, pick another one' });
+                // Check for unique constraint violations
+                if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+                    if (error.message.includes('users.username')) {
+                        return reply.status(409).send({ message: 'This username is already in use. Please, pick another one' });
+                    } else if (error.message.includes('users.email')) {
+                        return reply.status(409).send({ message: 'This email is already in use. Please, pick another one' });
+                    }
                 }
                 fastify.log.error(error);
                 return reply.status(500).send({ message: 'An unexpected error occurred on the server.' });
@@ -315,23 +335,3 @@ export async function userRoutes(fastify: FastifyInstance) {
         }
     });
 }
-
-// function updateUserStats(userId: string, tournamentId: string, isWinner: boolean, score: number) {
-//   try {
-//     // Update stats for ALL users (no more checking for temporary users)
-//     const statsUpdate = db.prepare(`
-//       INSERT OR REPLACE INTO user_stats (userId, tournaments_played, tournaments_won, total_score)
-//       VALUES (
-//         ?, 
-//         COALESCE((SELECT tournaments_played FROM user_stats WHERE userId = ?), 0) + 1,
-//         COALESCE((SELECT tournaments_won FROM user_stats WHERE userId = ?), 0) + ?,
-//         COALESCE((SELECT total_score FROM user_stats WHERE userId = ?), 0) + ?
-//       )
-//     `);
-//     statsUpdate.run(userId, userId, userId, isWinner ? 1 : 0, userId, score);
-    
-//     console.log(`Updated stats for user ${userId}: winner=${isWinner}, score=${score}`);
-//   } catch (error) {
-//     console.error('Error updating user stats:', error);
-//   }
-// }

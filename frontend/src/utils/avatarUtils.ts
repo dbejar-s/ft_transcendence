@@ -15,82 +15,62 @@ const avatarMap: { [key: string]: string } = {
  * Handles uploaded avatars, predefined avatars, and file objects
  */
 export const getAvatarUrl = (avatar: string | File | null | undefined): string => {
-  console.log('🔍 getAvatarUrl called with:', avatar, typeof avatar)
-  
   // Handle null/undefined
   if (!avatar) {
-    console.log('⚠️ No avatar provided, using default')
-    return "/default-avatar.svg"
+    return '/default-avatar.svg';
   }
 
   // Handle File objects (for preview)
   if (avatar instanceof File) {
-    const url = URL.createObjectURL(avatar)
-    console.log('📁 File avatar URL:', url)
-    return url
+    const url = URL.createObjectURL(avatar);
+    return url;
   }
   
   if (typeof avatar === "string") {
-    console.log('🔤 Processing string avatar:', avatar)
-    
     // If it's an uploaded avatar (starts with /uploads/)
     if (avatar.startsWith("/uploads/")) {
-      const url = `https://localhost:3001${avatar}`
-      console.log('📤 Uploaded avatar URL:', url)
-      return url
+      const url = `https://localhost:3001${avatar}`;
+      return url;
     }
     
     // If it's a full URL
     if (avatar.startsWith("http")) {
-      console.log('🌐 Full URL avatar:', avatar)
-      return avatar
+      return avatar;
     }
     
     // If it's already a Vite import URL (contains blob: or /@fs/ or starts with /)
     if (avatar.startsWith("blob:") || avatar.startsWith("/@fs/") || avatar.startsWith("/src/assets/")) {
-      console.log('⚡ Vite URL avatar:', avatar)
-      return avatar
+      return avatar;
     }
     
     // Check if it's a predefined avatar name
     const cleanName = avatar
       .replace("/assets/Profile/", "")
       .replace("../../assets/Profile/", "")
-      .replace("/src/assets/Profile/", "")
-    
-    console.log('🧹 Cleaned name:', cleanName)
-    console.log('🗺️ Looking in avatarMap:', Object.keys(avatarMap))
+      .replace("/src/assets/Profile/", "");
     
     if (avatarMap[cleanName]) {
-      console.log('🎭 Found predefined avatar:', cleanName, '->', avatarMap[cleanName])
-      return avatarMap[cleanName]
+      return avatarMap[cleanName];
     }
     
     // Special case: if the avatar IS already the correct URL format
     if (avatar.startsWith("/assets/Profile/") && avatar.endsWith(".png")) {
-      console.log('✅ Avatar is already in correct public URL format:', avatar)
-      return avatar
+      return avatar;
     }
     
     // Handle any remaining cases that might include the name
     const foundKey = Object.keys(avatarMap).find(key => 
       avatar.includes(key) || key.includes(avatar.replace('.png', ''))
-    )
+    );
     if (foundKey) {
-      console.log('🎭 Found predefined avatar by search:', foundKey, '->', avatarMap[foundKey])
-      return avatarMap[foundKey]
+      return avatarMap[foundKey];
     }
     
-    console.log('❓ Unknown avatar format, trying as-is:', avatar)
-    console.log('📋 Available avatars:', Object.keys(avatarMap))
-    
     // Last resort: try the avatar as-is in case it's a valid public URL
-    console.log('🔄 Returning as-is:', avatar)
-    return avatar
+    return avatar;
   }
   
-  console.log('⚠️ Using default avatar')
-  return "/default-avatar.svg"
+  return "/default-avatar.svg";
 }
 
-export default getAvatarUrl
+export default getAvatarUrl;

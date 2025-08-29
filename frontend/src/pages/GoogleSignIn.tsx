@@ -27,36 +27,29 @@ export default function GoogleSignIn() {
         return; // Don't proceed if there's no token
       }
 
-      // Validate user data before attempting login
-      if (!userData.user || !userData.user.id || !userData.user.email || !userData.user.username) {
-        console.error('Incomplete user data received:', userData.user);
-        return;
+      // Check if user data is complete (existing user)
+      if (userData.user && userData.user.id && userData.user.email && userData.user.username) {
+        // Auto-login with existing user data
+        try {
+          login({
+            id: userData.user.id,
+            email: userData.user.email,
+            username: userData.user.username,
+            avatar: userData.user.avatar || '/default-avatar.svg',
+            language: userData.user.language || navigator.language.split('-')[0] || 'en',
+            provider: 'google',
+          });
+          
+          // Redirect to home for existing users
+          navigate('/');
+        } catch (loginError) {
+          console.error('Error in login context:', loginError);
+          return;
+        }
+      } else {
+        // Incomplete data - redirect to complete profile
+        navigate('/complete-profile');
       }
-
-      // Auto-login with Google avatar
-      try {
-        login({
-          id: userData.user.id,
-          email: userData.user.email,
-          username: userData.user.username,
-          avatar: userData.user.avatar, // Directly from Google
-          language: userData.user.language || navigator.language.split('-')[0] || 'en',
-          provider: 'google',
-        });
-      } catch (loginError) {
-        console.error('Error in login context:', loginError);
-        return;
-      }
-      
-      // Final verification that everything is set up correctly
-      const finalToken = localStorage.getItem('token');
-      if (!finalToken) {
-        console.error('CRITICAL: Token not found in localStorage after login process!');
-        return;
-      }
-      
-      // Go directly to CompleteProfile
-      navigate('/complete-profile');
     } catch (err) {
       console.error('Google Sign-in error:', err);
     }
@@ -65,7 +58,7 @@ export default function GoogleSignIn() {
   return (
     <GoogleLogin
       onSuccess={handleGoogleSuccess}
-      onError={() => console.log('Google Sign-in failed')}
+      onError={() => {}}
     />
   );
 }
