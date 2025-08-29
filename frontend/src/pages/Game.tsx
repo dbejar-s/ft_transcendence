@@ -142,16 +142,16 @@ export default function Game() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          player1Name: player?.username || 'Guest',
-          player2Name: guestName,
+          player1Name: tournamentMatch ? tournamentMatch.player1 : (player?.username || 'Guest'),
+          player2Name: tournamentMatch ? tournamentMatch.player2 : guestName,
           gameMode: tournamentMatch ? 'Tournament' : 'Casual'
         })
       });
 
       console.log("Match started, received WebSocket URLs:", data);
 
-      // If a guest profile was created, update the player context
-      if (data.guestProfile && !player?.id) {
+      // If a guest profile was created, update the player context (only for non-tournament games)
+      if (data.guestProfile && !player?.id && !tournamentMatch) {
         const guestPlayer = {
           id: data.guestProfile.id,
           username: data.guestProfile.username,
@@ -372,23 +372,23 @@ export default function Game() {
 
   // Update player1 name when user data is loaded (for non-tournament games)
   useEffect(() => {
-    if (player?.username && !tournamentMatch) {
+    if (player?.username && !tournamentMatch && !location.state?.tournamentMatch) {
       setPlayers(prev => ({ 
         ...prev, 
         player1: { username: player.username } 
       }));
     }
-  }, [player?.username, tournamentMatch]);
+  }, [player?.username, tournamentMatch, location.state?.tournamentMatch]);
 
   // Update player2 name when guestName changes (for non-tournament games)
   useEffect(() => {
-    if (!tournamentMatch) {
+    if (!tournamentMatch && !location.state?.tournamentMatch) {
       setPlayers(prev => ({ 
         ...prev, 
         player2: { username: guestName } 
       }));
     }
-  }, [guestName, tournamentMatch]);
+  }, [guestName, tournamentMatch, location.state?.tournamentMatch]);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#2a2a27] relative overflow-hidden">      {showOverlay && (

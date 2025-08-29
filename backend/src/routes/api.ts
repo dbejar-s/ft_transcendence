@@ -10,14 +10,6 @@ import { jwtMiddleware } from '../jwtMiddleware';
 import jwt from 'jsonwebtoken';
 import * as crypto from 'crypto';
 
-// Cache for tournament events (for client polling)
-const tournamentEvents = new Map<string, {
-  lastUpdate: string;
-  finished: boolean;
-  newRound: boolean;
-  message: string;
-}>();
-
 export async function apiRoutes(fastify: FastifyInstance) {
   // Health check endpoint (no auth required)
   fastify.get('/health', async (request, reply) => {
@@ -35,7 +27,8 @@ export async function apiRoutes(fastify: FastifyInstance) {
     if (!user) return reply.status(401).send({ message: 'Unauthorized' });
 
     try {
-      const stmt = db.prepare(`
+      // Get regular matches
+      const regularMatchesStmt = db.prepare(`
         SELECT 
           m.id,
           m.player1Score,
@@ -58,16 +51,55 @@ export async function apiRoutes(fastify: FastifyInstance) {
           CASE 
             WHEN m.winnerId = ? THEN 'win'
             ELSE 'loss'
-          END as result
+          END as result,
+          'regular' as matchType
         FROM matches m
         JOIN users u1 ON m.player1Id = u1.id
         LEFT JOIN users u2 ON m.player2Id = u2.id
         WHERE m.player1Id = ? OR (m.player2Id = ? AND m.player2Id IS NOT NULL)
-        ORDER BY m.playedAt DESC
       `);
       
-      const matches = stmt.all(user.id, user.id, user.id, user.id, user.id);
-      reply.send(matches);
+      const regularMatches = regularMatchesStmt.all(user.id, user.id, user.id, user.id, user.id);
+      
+      // Get tournament matches
+      const tournamentMatchesStmt = db.prepare(`
+        SELECT 
+          tm.id,
+          tm.player1Score,
+          tm.player2Score,
+          tm.winnerId,
+          'Tournament' as gameMode,
+          tm.playedAt,
+          u1.username as player1Name,
+          u2.username as player2Name,
+          u1.avatar as player1Avatar,
+          u2.avatar as player2Avatar,
+          CASE
+            WHEN tm.player1Id = ? THEN u2.username
+            ELSE u1.username
+          END as opponent,
+          CASE 
+            WHEN tm.player1Id = ? THEN u2.avatar
+            ELSE u1.avatar
+          END as opponentAvatar,
+          CASE 
+            WHEN tm.winnerId = ? THEN 'win'
+            ELSE 'loss'
+          END as result,
+          'tournament' as matchType
+        FROM tournament_matches tm
+        JOIN users u1 ON tm.player1Id = u1.id
+        JOIN users u2 ON tm.player2Id = u2.id
+        WHERE (tm.player1Id = ? OR tm.player2Id = ?) AND tm.status = 'finished'
+      `);
+      
+      const tournamentMatches = tournamentMatchesStmt.all(user.id, user.id, user.id, user.id, user.id);
+      
+      // Combine and sort by playedAt
+      const allMatches = [...regularMatches, ...tournamentMatches]
+        .sort((a: any, b: any) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime());
+      
+      reply.send(allMatches);
     } catch (error: any) {
       reply.status(500).send({ message: 'Database error', error: error.message });
     }
@@ -156,6 +188,15 @@ export async function apiRoutes(fastify: FastifyInstance) {
         console.log(`[MATCH] Warning: player2Name "${player2Name}" is the same as player1Name "${player1Name}". Skipping player2.`);
       }
 
+      console.log(`[MATCH] Debugging match data received:`);
+      console.log(`[MATCH] - player1Name: "${player1Name}" -> actualPlayer1Id: ${actualPlayer1Id}`);
+      console.log(`[MATCH] - player2Name: "${player2Name}" -> actualPlayer2Id: ${actualPlayer2Id}`);
+      console.log(`[MATCH] - player1Score: ${player1Score} (score for ${player1Name})`);
+      console.log(`[MATCH] - player2Score: ${player2Score} (score for ${player2Name})`);
+      console.log(`[MATCH] - winnerId received: ${winnerId}`);
+      console.log(`[MATCH] - gameMode: ${gameMode}`);
+      console.log(`[MATCH] - tournamentId: ${tournamentId}`);
+
       console.log(`[MATCH] Final player IDs: player1=${actualPlayer1Id}, player2=${actualPlayer2Id}`);
       
       // Safety check: player1Id cannot be NULL in the database
@@ -164,9 +205,27 @@ export async function apiRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ message: 'Missing player1 information' });
       }
       
-      // Determine final winner ID
+      // Determine final winner ID - first check scores, then fallback to winnerId
       let finalWinnerId = null;
-      if (winnerId) {
+      
+      // Primary method: determine winner from scores
+      if (player1Score !== undefined && player2Score !== undefined) {
+        // Note: Due to frontend score inversion logic, we need to invert the winner determination
+        // The frontend sends scores correctly but the logic needs to be inverted
+        if (player2Score > player1Score) {
+          finalWinnerId = actualPlayer1Id;
+          console.log(`[MATCH] Winner determination: actualPlayer1 won by score (p2Score=${player2Score} > p1Score=${player1Score}), using actualPlayer1Id=${actualPlayer1Id}`);
+        } else if (player1Score > player2Score) {
+          finalWinnerId = actualPlayer2Id;
+          console.log(`[MATCH] Winner determination: actualPlayer2 won by score (p1Score=${player1Score} > p2Score=${player2Score}), using actualPlayer2Id=${actualPlayer2Id}`);
+        } else {
+          // Tie - no winner
+          finalWinnerId = null;
+          console.log(`[MATCH] Winner determination: tie (${player1Score} = ${player2Score}), no winner`);
+        }
+      } 
+      // Fallback method: use provided winnerId if scores don't determine winner
+      else if (winnerId) {
         if (typeof winnerId === 'string' && winnerId.length > 10) {
           // Winner ID is provided as UUID (tournament matches), use it directly
           finalWinnerId = winnerId;
@@ -183,6 +242,7 @@ export async function apiRoutes(fastify: FastifyInstance) {
       }
       console.log(`[MATCH] Final winnerId: ${finalWinnerId}`);
 
+      // Always save to matches table for stats and match history
       const stmt = db.prepare(`
         INSERT INTO matches (
           player1Id, player2Id, player1Score, player2Score, 
@@ -200,106 +260,16 @@ export async function apiRoutes(fastify: FastifyInstance) {
         playedAt || new Date().toISOString()
       );
 
-      console.log(`[MATCH] Match saved with ID: ${result.lastInsertRowid}`);
+      const matchId = result.lastInsertRowid;
+      console.log(`[MATCH] Match saved with ID: ${matchId}`);
 
-      // For tournament matches, update the tournament match record
       if (tournamentId && gameMode === 'Tournament') {
-        console.log(`🏆 [TOURNAMENT] Updating tournament match for tournament ${tournamentId}`);
-        console.log(`🏆 [TOURNAMENT] Looking for match between players: ${actualPlayer1Id} and ${actualPlayer2Id}`);
-        
-        // Find the tournament match that corresponds to this result
-        const tournamentMatch = db.prepare(`
-            SELECT id, round, phase, player1Id, player2Id FROM tournament_matches 
-            WHERE tournamentId = ? 
-            AND ((player1Id = ? AND player2Id = ?) OR (player1Id = ? AND player2Id = ?))
-            AND status = 'pending'
-            ORDER BY round DESC, id DESC
-            LIMIT 1
-          `).get(tournamentId, actualPlayer1Id, actualPlayer2Id, actualPlayer2Id, actualPlayer1Id) as any;
-        
-        if (tournamentMatch) {
-          console.log(`🏆 [TOURNAMENT] Found tournament match:`, {
-            matchId: tournamentMatch.id,
-            round: tournamentMatch.round,
-            phase: tournamentMatch.phase,
-            originalPlayer1: tournamentMatch.player1Id,
-            originalPlayer2: tournamentMatch.player2Id
-          });
-          
-          // Determine the correct player1Score and player2Score based on tournament match player order
-          let tournamentPlayer1Score, tournamentPlayer2Score;
-          if (tournamentMatch.player1Id === actualPlayer1Id) {
-            tournamentPlayer1Score = player1Score;
-            tournamentPlayer2Score = player2Score;
-          } else {
-            tournamentPlayer1Score = player2Score;
-            tournamentPlayer2Score = player1Score;
-          }
-          
-          console.log(`🏆 [TOURNAMENT] Adjusted scores for tournament table:`, {
-            tournamentPlayer1Score,
-            tournamentPlayer2Score,
-            winnerId: finalWinnerId
-          });
-          
-          // Update the tournament match
-          const updateStmt = db.prepare(`
-              UPDATE tournament_matches
-              SET player1Score = ?, player2Score = ?, winnerId = ?, status = 'finished', playedAt = CURRENT_TIMESTAMP
-              WHERE id = ?
-            `);
-          updateStmt.run(tournamentPlayer1Score, tournamentPlayer2Score, finalWinnerId, tournamentMatch.id);
-          
-          console.log(`✅ [TOURNAMENT] Tournament match ${tournamentMatch.id} updated successfully!`);
-          console.log(`✅ [TOURNAMENT] Final result: ${tournamentPlayer1Score}-${tournamentPlayer2Score}, winner: ${finalWinnerId}`);
-          
-          // Check if this round is complete and advance if needed
-          console.log(`🔍 [TOURNAMENT] Checking if round ${tournamentMatch.round} is complete in tournament ${tournamentId}`);
-          const pendingMatches = db.prepare(`
-                SELECT COUNT(*) as count FROM tournament_matches 
-                WHERE tournamentId = ? AND round = ? AND status = 'pending'
-              `).get(tournamentId, tournamentMatch.round) as any;
-          
-          console.log(`📊 [TOURNAMENT] Pending matches in round ${tournamentMatch.round}: ${pendingMatches.count}`);
-          
-          if (pendingMatches.count === 0) {
-            console.log(`🎯 [TOURNAMENT] Round ${tournamentMatch.round} completed! Triggering automatic progression...`);
-            
-            // Call advance-round endpoint
-            try {
-              const advanceResponse = await fetch(`https://localhost:3001/api/tournaments/${tournamentId}/advance-round`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ completedRound: tournamentMatch.round })
-              });
-              
-              if (advanceResponse.ok) {
-                const advanceResult = await advanceResponse.json();
-                console.log(`🚀 [TOURNAMENT] Advance-round successful:`, advanceResult);
-                
-                // Store tournament events for client polling
-                tournamentEvents.set(tournamentId.toString(), {
-                  lastUpdate: new Date().toISOString(),
-                  finished: advanceResult.finished || false,
-                  newRound: advanceResult.created || false,
-                  message: advanceResult.message || 'Round completed'
-                });
-                console.log(`💾 [CACHE] Stored tournament event for polling:`, tournamentEvents.get(tournamentId.toString()));
-              } else {
-                console.error(`❌ [TOURNAMENT] Advance-round failed with status:`, advanceResponse.status);
-              }
-            } catch (advanceError) {
-              console.error(`❌ [TOURNAMENT] Advance-round call failed:`, advanceError);
-            }
-          }
-        } else {
-          console.error(`❌ [TOURNAMENT] No matching tournament match found for players ${actualPlayer1Id} vs ${actualPlayer2Id} in tournament ${tournamentId}`);
-        }
+        console.log(`[TOURNAMENT] Tournament match result saved to matches table for stats/history, but NOT to tournament_matches`);
       }
 
       reply.status(201).send({ 
         message: 'Match saved successfully', 
-        matchId: result.lastInsertRowid 
+        matchId: matchId 
       });
     } catch (error: any) {
       console.error('Error saving match:', error);
