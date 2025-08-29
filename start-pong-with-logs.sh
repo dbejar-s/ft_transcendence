@@ -7,11 +7,11 @@ set -e
 echo "🧹 Cleaning up existing containers..."
 docker-compose down --volumes --remove-orphans
 
-echo "BUILD and UP..."
+echo "BUILD and UP with LOGS..."
 
-# Step 2: Build and start
+# Step 2: Build and start in detached mode first
 echo "🔨 Building and starting services..."
-docker-compose up --build
+docker-compose up --build -d
 
 # Step 3: Wait for services to be ready
 echo "⏳ Waiting for services to be ready..."
@@ -43,7 +43,7 @@ for i in {1..30}; do
     sleep 2
 done
 
-# Step 4: Silent SSL certificate handling
+# Step 4: SSL certificate handling (same as before)
 echo "🔐 Implementing silent SSL certificate handling..."
 
 # Create SSL certificate database for browsers
@@ -71,168 +71,37 @@ if [ -f ~/.ft_transcendence_ssl/frontend.crt ]; then
     echo "🔑 Frontend cert fingerprint: ${FRONTEND_FINGERPRINT:0:20}..."
 fi
 
-# Advanced SSL session warming with proper SSL context establishment
-echo "🌡️  Advanced SSL session warming..."
+# Quick SSL connectivity test
+echo "🧪 Testing SSL connectivity..."
+BACKEND_TEST=$(curl -k -s -w "%{http_code}" -o /dev/null "https://localhost:3001" 2>/dev/null)
+FRONTEND_TEST=$(curl -k -s -w "%{http_code}" -o /dev/null "https://localhost:5173" 2>/dev/null)
 
-# Create a comprehensive SSL handshake sequence
-for i in {1..10}; do
-    # Backend SSL establishment with session reuse
-    curl -k -s \
-        --connect-timeout 5 \
-        --max-time 10 \
-        --retry 0 \
-        --ssl-reqd \
-        --http1.1 \
-        -H "Connection: keep-alive" \
-        -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0" \
-        "https://localhost:3001" > /dev/null 2>&1 &
-    
-    # Frontend SSL establishment with session reuse
-    curl -k -s \
-        --connect-timeout 5 \
-        --max-time 10 \
-        --retry 0 \
-        --ssl-reqd \
-        --http1.1 \
-        -H "Connection: keep-alive" \
-        -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0" \
-        "https://localhost:5173" > /dev/null 2>&1 &
-    
-    if [ $i -eq 5 ]; then
-        sleep 1  # Allow connections to establish
-    fi
-done
-
-# Wait for all background SSL connections to complete
-wait
-
-# Intensive CORS preflight warming
-echo "🤝 Intensive CORS preflight warming..."
-for i in {1..5}; do
-    # Google Auth endpoint preflight
-    curl -k -s \
-        -X OPTIONS \
-        -H "Origin: https://localhost:5173" \
-        -H "Access-Control-Request-Method: POST" \
-        -H "Access-Control-Request-Headers: Content-Type, Authorization" \
-        -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0" \
-        "https://localhost:3001/api/auth/google" > /dev/null 2>&1
-    
-    # User endpoint preflight
-    curl -k -s \
-        -X OPTIONS \
-        -H "Origin: https://localhost:5173" \
-        -H "Access-Control-Request-Method: GET, POST, PUT, DELETE" \
-        -H "Access-Control-Request-Headers: Content-Type, Authorization" \
-        "https://localhost:3001/api/user" > /dev/null 2>&1
-    
-    # Tournament endpoint preflight
-    curl -k -s \
-        -X OPTIONS \
-        -H "Origin: https://localhost:5173" \
-        -H "Access-Control-Request-Method: GET, POST" \
-        -H "Access-Control-Request-Headers: Content-Type, Authorization" \
-        "https://localhost:3001/api/tournaments" > /dev/null 2>&1
-    
-    sleep 0.5
-done
-
-# Create browser configuration for automatic SSL acceptance
-echo "⚙️  Creating browser SSL override configurations..."
-
-# Firefox SSL override (cert_override.txt format)
-if [ -n "$BACKEND_FINGERPRINT" ] && [ -n "$FRONTEND_FINGERPRINT" ]; then
-    cat > ~/.ft_transcendence_ssl/firefox_overrides.txt << EOF
-# ft_transcendence SSL overrides for Firefox
-localhost:3001:MQZD	OID.2.16.840.1.101.3.4.2.1	${BACKEND_FINGERPRINT}	U
-localhost:5173:MQZD	OID.2.16.840.1.101.3.4.2.1	${FRONTEND_FINGERPRINT}	U
-EOF
-    echo "📝 Created Firefox SSL overrides"
-fi
-
-# Chrome/Chromium SSL ignore flags
-cat > ~/.ft_transcendence_ssl/chrome_flags.txt << 'EOF'
---ignore-certificate-errors
---ignore-ssl-errors
---ignore-certificate-errors-spki-list
---allow-running-insecure-content
---disable-web-security
---allow-insecure-localhost
---disable-features=VizDisplayCompositor
-EOF
-echo "📝 Created Chrome SSL bypass flags"
-
-# Test SSL connectivity with browser-simulation
-echo "🧪 Testing SSL connectivity with browser simulation..."
-
-# Simulate actual browser request patterns
-BACKEND_TEST=$(curl -k -s \
-    -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8" \
-    -H "Accept-Language: en-US,en;q=0.5" \
-    -H "Accept-Encoding: gzip, deflate, br" \
-    -H "DNT: 1" \
-    -H "Connection: keep-alive" \
-    -H "Upgrade-Insecure-Requests: 1" \
-    -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0" \
-    -w "%{http_code}" \
-    -o /dev/null \
-    "https://localhost:3001" 2>/dev/null)
-
-FRONTEND_TEST=$(curl -k -s \
-    -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8" \
-    -H "Accept-Language: en-US,en;q=0.5" \
-    -H "Accept-Encoding: gzip, deflate, br" \
-    -H "DNT: 1" \
-    -H "Connection: keep-alive" \
-    -H "Upgrade-Insecure-Requests: 1" \
-    -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0" \
-    -w "%{http_code}" \
-    -o /dev/null \
-    "https://localhost:5173" 2>/dev/null)
-
-# Test the critical API endpoint
-API_TEST=$(curl -k -s \
-    -X POST \
-    -H "Content-Type: application/json" \
-    -H "Origin: https://localhost:5173" \
-    -H "Referer: https://localhost:5173/" \
-    -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0" \
-    -d '{"test":"data"}' \
-    "https://localhost:3001/api/auth/google" 2>/dev/null)
-
-# Report results
 echo ""
 echo "📊 SSL Connectivity Test Results:"
 echo "================================="
 
 if [ "$BACKEND_TEST" = "404" ]; then
-    echo "✅ Backend SSL (port 3001)"
+    echo "✅ Backend SSL (port 3001): Working"
 else
     echo "⚠️  Backend SSL (port 3001): HTTP $BACKEND_TEST"
 fi
 
 if [ "$FRONTEND_TEST" = "200" ]; then
-    echo "✅ Frontend SSL (port 5173): Accessible"
+    echo "✅ Frontend SSL (port 5173): Working"
 else
     echo "⚠️  Frontend SSL (port 5173): HTTP $FRONTEND_TEST"
-fi
-
-if echo "$API_TEST" | grep -q "No Google credential provided"; then
-    echo "✅ CORS API Test: Working (No CORS errors)"
-elif echo "$API_TEST" | grep -q "CORS\|cors"; then
-    echo "❌ CORS API Test: Still has CORS issues"
-else
-    echo "⚠️  CORS API Test: API response: ${API_TEST:0:50}..."
 fi
 
 echo ""
 echo "🎯 ft_transcendence is ready!"
 echo "============================"
 echo "🎮 Frontend: https://localhost:5173"
+echo "🔧 Backend: https://localhost:3001"
 echo ""
-echo "📋 SSL certificates cached and warmed"
+echo "📋 Setup complete! Now showing live logs..."
+echo "   Press Ctrl+C to stop viewing logs (services will continue running)"
 echo ""
-echo "💡 If you still encounter SSL issues in the browser:"
-echo "   • Manually visit both URLs once to accept certificates"
-echo ""
-echo "🚀 SSL automation complete!"
+
+# Step 5: Now show the logs (this will block, but setup is complete)
+echo "📄 Showing container logs..."
+docker-compose logs -f
