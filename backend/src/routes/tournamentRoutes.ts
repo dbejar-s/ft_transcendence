@@ -491,23 +491,11 @@ async function createNextRound(tournamentId: string, currentRound: number): Prom
     
     // For 3 players tournament
     if (participants.length === 3) {
-      if (currentRound === 1) {
-        // Round 2: Top 2 players face each other in final
-        const top2 = standings.slice(0, 2);
-        console.log(`3-player tournament - creating final between top 2:`, top2.map(p => `${p.username} (${p.points} pts)`));
-        
-        if (top2.length >= 2) {
-          const insertMatch = db.prepare(`
-            INSERT INTO tournament_matches (tournamentId, player1Id, player2Id, round, phase, status)
-            VALUES (?, ?, ?, ?, ?, 'pending')
-          `);
-          
-          insertMatch.run(tournamentId, top2[0].userId, top2[1].userId, 2, 'final');
-          console.log(`✅ Final created: ${top2[0].username} vs ${top2[1].username}`);
-          return { created: true, finished: false };
-        }
-      } else {
-        // Tournament finished after round 2
+      // Check if all players have different point totals
+      const uniquePoints = [...new Set(standings.map(s => s.points))];
+      
+      if (uniquePoints.length === 3) {
+        // All players have different points - tournament finished
         const winner = standings[0];
         const updateTournament = db.prepare(`
           UPDATE tournaments 
@@ -516,8 +504,62 @@ async function createNextRound(tournamentId: string, currentRound: number): Prom
         `);
         updateTournament.run(winner.userId, tournamentId);
         
-        console.log(`✅ 3-player tournament finished! Winner: ${winner.username}`);
+        console.log(`✅ 3-player tournament finished! Winner: ${winner.username} with ${winner.points} points`);
+        console.log(`Final standings:`, standings.map(s => `${s.username}: ${s.points} pts`));
         return { created: false, finished: true };
+      } else {
+        // Some players have the same points - create matches between tied players
+        console.log(`3-player tournament - Round ${currentRound + 1}: Some players are tied, creating matches for tied players`);
+        console.log(`Current standings:`, standings.map(s => `${s.username}: ${s.points} pts`));
+        
+        const insertMatch = db.prepare(`
+          INSERT INTO tournament_matches (tournamentId, player1Id, player2Id, round, phase, status)
+          VALUES (?, ?, ?, ?, ?, 'pending')
+        `);
+        
+        let matchesCreated = 0;
+        
+        // Group players by points
+        const pointGroups = new Map();
+        standings.forEach(player => {
+          if (!pointGroups.has(player.points)) {
+            pointGroups.set(player.points, []);
+          }
+          pointGroups.get(player.points).push(player);
+        });
+        
+        // Create matches between tied players
+        for (const [points, players] of pointGroups) {
+          if (players.length === 2) {
+            // Two players tied - make them play
+            insertMatch.run(tournamentId, players[0].userId, players[1].userId, currentRound + 1, 'tiebreaker');
+            console.log(`✅ Tiebreaker match created: ${players[0].username} vs ${players[1].username} (both have ${points} points)`);
+            matchesCreated++;
+          } else if (players.length === 3) {
+            // All three players tied - create round robin between them
+            insertMatch.run(tournamentId, players[0].userId, players[1].userId, currentRound + 1, 'tiebreaker');
+            insertMatch.run(tournamentId, players[1].userId, players[2].userId, currentRound + 1, 'tiebreaker');
+            insertMatch.run(tournamentId, players[0].userId, players[2].userId, currentRound + 1, 'tiebreaker');
+            console.log(`✅ Round robin tiebreaker created: all three players tied with ${points} points`);
+            matchesCreated += 3;
+          }
+        }
+        
+        if (matchesCreated > 0) {
+          return { created: true, finished: false };
+        } else {
+          // No ties to resolve, tournament should be finished
+          const winner = standings[0];
+          const updateTournament = db.prepare(`
+            UPDATE tournaments 
+            SET status = 'finished', winnerId = ?
+            WHERE id = ?
+          `);
+          updateTournament.run(winner.userId, tournamentId);
+          
+          console.log(`✅ 3-player tournament finished! Winner: ${winner.username}`);
+          return { created: false, finished: true };
+        }
       }
     }
     
