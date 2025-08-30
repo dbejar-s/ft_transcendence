@@ -1,6 +1,6 @@
 // This file centralizes all our API calls.
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
 // A helper function for making fetch requests
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {

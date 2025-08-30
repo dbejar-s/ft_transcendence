@@ -29,7 +29,7 @@ export const getAvatarUrl = (avatar: string | File | null | undefined): string =
   if (typeof avatar === "string") {
     // If it's an uploaded avatar (starts with /uploads/)
     if (avatar.startsWith("/uploads/")) {
-      const url = `https://localhost:3001${avatar}`;
+      const url = `http://localhost:3001${avatar}`;
       return url;
     }
     

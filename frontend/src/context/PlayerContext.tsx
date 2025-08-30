@@ -39,7 +39,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     
     if (player?.id && isLoggedIn) {
       console.log("Establishing global WebSocket connection for:", player.username, "ID:", player.id);
-      const ws = new WebSocket(`wss://localhost:3001/ws?userId=${encodeURIComponent(player.id)}`);
+      const ws = new WebSocket(`ws://localhost:3001/ws?userId=${encodeURIComponent(player.id)}`);
       wsRef.current = ws;
 
       ws.onopen = () => {

@@ -14,16 +14,25 @@ import { jwtMiddleware } from './jwtMiddleware';
 import { WebSocketServer } from "ws";
 import type WS from "ws";
 
-// HTTPS configuration
-const httpsOptions = {
-  key: fs.readFileSync(path.join(__dirname, '..', 'certs', 'key.pem')),
-  cert: fs.readFileSync(path.join(__dirname, '..', 'certs', 'cert.pem'))
-};
+// HTTPS configuration - only use in production
+const isProduction = process.env.NODE_ENV === 'production';
+let fastify: any;
 
-const fastify = Fastify({ 
-  logger: true,
-  https: httpsOptions
-});
+if (isProduction) {
+  const httpsOptions = {
+    key: fs.readFileSync(path.join(__dirname, '..', 'certs', 'key.pem')),
+    cert: fs.readFileSync(path.join(__dirname, '..', 'certs', 'cert.pem'))
+  };
+  fastify = Fastify({ 
+    logger: true,
+    https: httpsOptions
+  });
+} else {
+  fastify = Fastify({ 
+    logger: true
+    // No https option = HTTP mode
+  });
+}
 
 // Security headers
 fastify.register(helmet, {
@@ -57,7 +66,7 @@ const allowedOrigins = [
 ];
 
 fastify.register(cors, {
-  origin: (origin, callback) => {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
     // Allow requests with no origin (mobile apps, curl, file:// protocol, etc.)
     if (!origin) return callback(null, true);
     
@@ -92,7 +101,7 @@ fastify.route({
   method: 'GET',
   url: '/api/protected',
   preHandler: jwtMiddleware,
-  handler: async (request, reply) => {
+  handler: async (request: any, reply: any) => {
     reply.send({ message: 'Protected', user: (request as any).user });
   },
 });

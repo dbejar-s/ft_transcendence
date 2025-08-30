@@ -10,9 +10,16 @@ export default function GoogleSignIn() {
 
   const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
     if (!credentialResponse.credential) return;
+    
+    console.log('🔑 Google credential received, length:', credentialResponse.credential.length);
+    console.log('🔑 Token preview:', credentialResponse.credential.substring(0, 50) + '...');
+    
     try {
-      // Send the Google token to your backend for verification
-      const userData = await authService.handleGoogleLogin({ credential: credentialResponse.credential });
+      const userData = await authService.handleGoogleLogin({ 
+        credential: credentialResponse.credential 
+      });
+      
+      console.log('✅ Google auth successful:', userData);
 
       // Store the JWT token
       if (userData && userData.token) {
@@ -24,7 +31,7 @@ export default function GoogleSignIn() {
         }
       } else {
         console.error('No token received from backend!');
-        return; // Don't proceed if there's no token
+        return;
       }
 
       // Check if user data is complete (existing user)
@@ -51,7 +58,20 @@ export default function GoogleSignIn() {
         navigate('/complete-profile');
       }
     } catch (err) {
-      console.error('Google Sign-in error:', err);
+      console.error('❌ Google Sign-in failed:', err);
+      
+      // If it's an outdated token error, suggest specific solutions
+      if (err && typeof err === 'object' && 'message' in err && 
+          typeof err.message === 'string' && err.message.includes('outdated')) {
+        console.log('💡 Token is outdated. Try these solutions:');
+        console.log('   1. Sign out of Google account completely');
+        console.log('   2. Clear all Google cookies and cache');
+        console.log('   3. Use a different Google account');
+        console.log('   4. Wait a few minutes and try again');
+      }
+      
+      // Re-throw the error so it can be handled by the UI
+      throw err;
     }
   };
 
