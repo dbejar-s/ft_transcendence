@@ -16,6 +16,7 @@ npm-debug.log*
 yarn-error.log
 yarn-debug.log
 pnpm-debug.log
+lerna-debug.log*
 
 # Environment variables
 .env
@@ -59,3 +60,76 @@ Thumbs.db
 # they would be stored in a cloud storage service like S3.
 /backend/uploads/
 data/*.db
+
+# --- Docker and Build Artifacts ---
+
+# Docker volumes and temporary files
+docker-volumes/
+docker-data/
+
+# Build cache and temporary build files
+.cache/
+.nyc_output/
+coverage/
+*.log
+
+# Node.js coverage and test artifacts
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# --- Development Tools ---
+
+# ESLint cache
+.eslintcache
+
+# Prettier cache
+.prettiercache
+
+# Jest cache
+.jest/
+
+# Cypress
+cypress/videos/
+cypress/screenshots/
+
+# --- OS Specific ---
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Linux
+*~
+
+# --- Backup and Archive Files ---
+
+*.bak
+*.backup
+*.old
+*.orig
+*.rej
+*.swp
+*.swo
+
+# Archive files
+*.zip
+*.tar.gz
+*.rar
+*.7z

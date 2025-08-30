@@ -268,23 +268,13 @@ export default function Game() {
       let actualWinnerId = null;
       
       if (tournamentMatch) {
-        // For tournaments, determine winner from tournament match data
+        // For tournaments, determine winner from tournament match data using player IDs
         if (winnerId === 1) {
           // Player1 in the game won
-          // Find which actual player corresponds to game player1
-          if (players.player1.username === tournamentMatch.player1) {
-            actualWinnerId = tournamentMatch.player1Id;
-          } else if (players.player1.username === tournamentMatch.player2) {
-            actualWinnerId = tournamentMatch.player2Id;
-          }
+          actualWinnerId = tournamentMatch.player1Id;
         } else if (winnerId === 2) {
           // Player2 in the game won
-          // Find which actual player corresponds to game player2
-          if (players.player2.username === tournamentMatch.player1) {
-            actualWinnerId = tournamentMatch.player1Id;
-          } else if (players.player2.username === tournamentMatch.player2) {
-            actualWinnerId = tournamentMatch.player2Id;
-          }
+          actualWinnerId = tournamentMatch.player2Id;
         }
       } else {
         // For casual games, send the game winner number (1 or 2) and let backend determine actual winner ID
@@ -318,6 +308,27 @@ export default function Game() {
       console.log('Match saved successfully');
       // Dispatch custom event to notify components to refresh
       window.dispatchEvent(new CustomEvent('matchCompleted'));
+
+      // For tournament matches, also submit result to tournament endpoint
+      if (tournamentMatch && tournamentMatch.tournamentId && tournamentMatch.matchId) {
+        try {
+          console.log('[GAME] Submitting tournament match result...');
+          await apiFetch(`/api/tournaments/${tournamentMatch.tournamentId}/matches/${tournamentMatch.matchId}/result`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              player1Score: p1Score,
+              player2Score: p2Score
+            })
+          });
+          console.log('[GAME] Tournament match result submitted successfully');
+        } catch (tournamentError) {
+          console.error('[GAME] Error submitting tournament match result:', tournamentError);
+          // Don't fail the entire save if tournament update fails
+        }
+      }
     } catch (error) {
       console.error('Error saving match:', error);
     }

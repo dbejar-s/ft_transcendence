@@ -36,6 +36,12 @@ export default async function friendRoutes(fastify: FastifyInstance) {
       reply: FastifyReply
     ) => {
       const { userId } = request.params;
+      const authenticatedUser = (request as any).user;
+
+      // Validate that the userId from URL matches the authenticated user
+      if (userId !== authenticatedUser.id) {
+        return reply.status(403).send({ error: "You can only view your own friends" });
+      }
 
       try {
         // Join `friends` and `users` to fetch detailed friend info with games count
@@ -74,6 +80,12 @@ export default async function friendRoutes(fastify: FastifyInstance) {
 	) => {
 		const { userId } = request.params;
 		const { q = "" } = request.query;
+		const authenticatedUser = (request as any).user;
+
+		// Validate that the userId from URL matches the authenticated user
+		if (userId !== authenticatedUser.id) {
+			return reply.status(403).send({ error: "You can only search for friends for yourself" });
+		}
 
 		try {
 		// Get list of already-added friends
@@ -135,6 +147,17 @@ export default async function friendRoutes(fastify: FastifyInstance) {
       reply: FastifyReply
     ) => {
       const { userId, friendId } = request.params;
+      const authenticatedUser = (request as any).user;
+
+      // Validate that the userId from URL matches the authenticated user
+      if (userId !== authenticatedUser.id) {
+        return reply.status(403).send({ error: "You can only add friends for yourself" });
+      }
+
+      // Prevent adding yourself as a friend
+      if (userId === friendId) {
+        return reply.status(400).send({ error: "You cannot add yourself as a friend" });
+      }
 
       try {
         const checkStmt = db.prepare(
@@ -177,6 +200,12 @@ export default async function friendRoutes(fastify: FastifyInstance) {
       reply: FastifyReply
     ) => {
       const { userId, friendId } = request.params;
+      const authenticatedUser = (request as any).user;
+
+      // Validate that the userId from URL matches the authenticated user
+      if (userId !== authenticatedUser.id) {
+        return reply.status(403).send({ error: "You can only remove your own friends" });
+      }
 
       try {
         const stmt = db.prepare(

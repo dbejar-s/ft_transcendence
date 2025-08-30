@@ -10,8 +10,9 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const token = localStorage.getItem('token');
   
   // Don't set Content-Type for FormData - let the browser set it with boundary
+  // Don't set Content-Type to application/json if there's no body
   const headers: HeadersInit = {
-    ...(!(options.body instanceof FormData) && { 'Content-Type': 'application/json' }),
+    ...(!(options.body instanceof FormData) && options.body && { 'Content-Type': 'application/json' }),
     ...(token && { 'Authorization': `Bearer ${token}` }),
     ...options.headers,
   };

@@ -102,9 +102,15 @@ export default function AddFriendOverlay({ userId, onClose, onFriendAdded }: Pro
       onFriendAdded(friend)
       refreshSearch()
       onClose()
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error adding friend:", err)
-      alert("Impossible to add this friend.")
+      
+      // Show more specific error messages
+      if (err.message) {
+        alert(`Error: ${err.message}`)
+      } else {
+        alert("Impossible to add this friend.")
+      }
     }
   }
 

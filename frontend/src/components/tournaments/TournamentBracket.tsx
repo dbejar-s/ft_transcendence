@@ -86,6 +86,8 @@ export default function TournamentBracket({ tournamentId, onClose }: TournamentB
     const matchData = {
       player1: match.player1Name,
       player2: match.player2Name,
+      player1Id: match.player1Id,
+      player2Id: match.player2Id,
       matchId: match.id,
       tournamentId: match.tournamentId,
       round: match.round,
