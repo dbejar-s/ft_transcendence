@@ -9,11 +9,22 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   // Get token from localStorage and add to headers if available
   const token = localStorage.getItem('token');
   
-  // Don't set Content-Type for FormData - let the browser set it with boundary
+  // Merge custom headers first
+  const customHeaders = options.headers || {};
+  
+  // Don't set Content-Type for:
+  // 1. FormData - let the browser set it with boundary
+  // 2. Requests without body - no need for Content-Type
+  const shouldSetContentType = !(options.body instanceof FormData) && 
+                               options.body !== undefined &&
+                               options.body !== null &&
+                               !customHeaders.hasOwnProperty('Content-Type') && 
+                               !customHeaders.hasOwnProperty('content-type');
+  
   const headers: HeadersInit = {
-    ...(!(options.body instanceof FormData) && { 'Content-Type': 'application/json' }),
+    ...(shouldSetContentType && { 'Content-Type': 'application/json' }),
     ...(token && { 'Authorization': `Bearer ${token}` }),
-    ...options.headers,
+    ...customHeaders,
   };
 
   // Only log for authentication endpoints to reduce noise

@@ -136,13 +136,44 @@ export default async function friendRoutes(fastify: FastifyInstance) {
     ) => {
       const { userId, friendId } = request.params;
 
+      console.log(`[ADD_FRIEND] Attempting to add friend. UserId: ${userId}, FriendId: ${friendId}`);
+
       try {
+        // First check if both users exist
+        const userCheck = db.prepare('SELECT id, username FROM users WHERE id = ?');
+        const friendCheck = db.prepare('SELECT id, username FROM users WHERE id = ?');
+        
+        const user = userCheck.get(userId) as any;
+        const friend = friendCheck.get(friendId) as any;
+        
+        console.log(`[ADD_FRIEND] User found:`, user);
+        console.log(`[ADD_FRIEND] Friend found:`, friend);
+        
+        if (!user) {
+          console.log(`[ADD_FRIEND] Error: User not found with ID: ${userId}`);
+          return reply.status(400).send({ error: "User not found" });
+        }
+        
+        if (!friend) {
+          console.log(`[ADD_FRIEND] Error: Friend not found with ID: ${friendId}`);
+          return reply.status(400).send({ error: "Friend not found" });
+        }
+        
+        // Check if trying to add themselves
+        if (userId === friendId) {
+          console.log(`[ADD_FRIEND] Error: Cannot add yourself as friend`);
+          return reply.status(400).send({ error: "Cannot add yourself as friend" });
+        }
+
         const checkStmt = db.prepare(
           `SELECT 1 FROM friends WHERE userId = ? AND friendId = ? AND status = 'accepted'`
         );
         const alreadyExists = checkStmt.get(userId, friendId);
 
+        console.log(`[ADD_FRIEND] Existing relationship check:`, alreadyExists);
+
         if (alreadyExists) {
+          console.log(`[ADD_FRIEND] Error: Already friends`);
           return reply.status(400).send({ error: "Already friends" });
         }
 
@@ -157,9 +188,10 @@ export default async function friendRoutes(fastify: FastifyInstance) {
 
         tx();
 
+        console.log(`[ADD_FRIEND] Successfully added friendship between ${user.username} and ${friend.username}`);
         return reply.send({ success: true });
       } catch (err) {
-        console.error("Error adding friend:", err);
+        console.error("[ADD_FRIEND] Error adding friend:", err);
         return reply.status(500).send({ error: "Failed to add friend" });
       }
     }

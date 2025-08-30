@@ -96,7 +96,7 @@ export default function AddFriendOverlay({ userId, onClose, onFriendAdded }: Pro
   const handleAddFriend = async (friend: Friend) => {
     try {
       await apiFetch(`/api/users/${encodeURIComponent(userId)}/friends/${encodeURIComponent(friend.id)}`, { 
-        method: "POST" 
+        method: "POST" // No body, so apiFetch won't add Content-Type automatically
       });
 
       onFriendAdded(friend)

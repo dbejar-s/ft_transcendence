@@ -58,7 +58,7 @@ export default function Game() {
   // Function to handle score updates from GameDisplay
   const handleScoreUpdate = (p1Score: number, p2Score: number) => {
 	// Invert scores because wsPlayer1 is player 2 and wsPlayer2 is player 1
-    setScores({ p2: p1Score, p1: p2Score });
+    setScores({ p1: p1Score, p2: p2Score });
   };
 
   // Function to check if the current logged-in player is actually playing in this match
