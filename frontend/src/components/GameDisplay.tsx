@@ -65,12 +65,12 @@ export default function GameDisplay({ wsP1, wsP2, onScoreUpdate, isPaused = fals
 
           
           // Extract scores from STATE UPDATE message
-          // According to pong-server: scores are packed as (p1 << 8) | p2 in a u16
+          // According to MESSAGE-FORMAT.md: 4 x 1 --- 4 x 2 --- 8 x B --- 2 x S
+          // Total body: 4 + 4 + 8 + 2 = 18 bytes
           if (buffer.byteLength >= 22) { // 4 byte header + 18 byte body
-            const scoreOffset = 4 + 16; // header (4) + positions (16)
-            const packedScore = view.getUint16(scoreOffset, true); // Little Endian
-            const p1Score = (packedScore >> 8) & 0xFF; // High byte
-            const p2Score = packedScore & 0xFF; // Low byte
+            const scoreOffset = 4 + 16; // header (4) + positions (4+4+8 = 16)
+            const p1Score = view.getUint8(scoreOffset);
+            const p2Score = view.getUint8(scoreOffset + 1);
             
             // Send scores to parent component
             if (onScoreUpdate) {
@@ -112,13 +112,13 @@ export default function GameDisplay({ wsP1, wsP2, onScoreUpdate, isPaused = fals
       if (ws && ws.readyState === WebSocket.OPEN) {
         const buffer = new ArrayBuffer(5);
         const view = new DataView(buffer);
-        const PROTOCOL_VERSION = 1;
+        const PROTOCOL_VERSION = 0;
         const MESSAGE_TYPE_MOVE_PADDLE = 2;
-        const bodyLength = 1;
-        
+        // Always set bodyLength to 1 and use big-endian
         view.setUint8(0, PROTOCOL_VERSION);
         view.setUint8(1, MESSAGE_TYPE_MOVE_PADDLE);
-        view.setUint16(2, bodyLength, true); // Little Endian
+        view.setUint8(2, 0); // High byte of length (big-endian 1)
+        view.setUint8(3, 1); // Low byte of length
         view.setUint8(4, direction);
         ws.send(buffer);
       }
@@ -234,13 +234,13 @@ export default function GameDisplay({ wsP1, wsP2, onScoreUpdate, isPaused = fals
           if (ws.readyState === WebSocket.OPEN) {
             const buffer = new ArrayBuffer(4);
             const view = new DataView(buffer);
-            const PROTOCOL_VERSION = 1;
+            const PROTOCOL_VERSION = 0;
             const MESSAGE_TYPE_PAUSE = 1;
             const bodyLength = 0;
             
             view.setUint8(0, PROTOCOL_VERSION);
             view.setUint8(1, MESSAGE_TYPE_PAUSE);
-            view.setUint16(2, bodyLength, true); // Little Endian
+            view.setUint16(2, bodyLength, false); // Big Endian
             ws.send(buffer);
           }
         };
@@ -252,13 +252,13 @@ export default function GameDisplay({ wsP1, wsP2, onScoreUpdate, isPaused = fals
           if (ws.readyState === WebSocket.OPEN) {
             const buffer = new ArrayBuffer(4);
             const view = new DataView(buffer);
-            const PROTOCOL_VERSION = 1;
+            const PROTOCOL_VERSION = 0;
             const MESSAGE_TYPE_START_CONTINUE = 0;
             const bodyLength = 0;
             
             view.setUint8(0, PROTOCOL_VERSION);
             view.setUint8(1, MESSAGE_TYPE_START_CONTINUE);
-            view.setUint16(2, bodyLength, true); // Little Endian
+            view.setUint16(2, bodyLength, false); // Big Endian
             ws.send(buffer);
           }
         };
