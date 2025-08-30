@@ -115,6 +115,50 @@ void	send_message(const game *game, const u8 message_type, const uintptr_t arg) 
 		Die();
 }
 
+void	send_message_to_players(const game *game, const u8 message_type, const uintptr_t arg) {
+	message	msg;
+
+	msg = (message){.version = PROTOCOL_VERSION, .type = message_type};
+	debug("Game %hhu: Sending message to players: %s", game->id, server_message_type_strings[message_type]);
+	switch (message_type) {
+		case MESSAGE_SERVER_GAME_INIT:
+			msg.length = sizeof(msg_srv_init);
+			*(msg_srv_init *)msg.body = _msg_srv_init(game->ports.p1, game->ports.p2);
+			break ;
+		case MESSAGE_SERVER_GAME_PAUSED:
+			msg.length = 0;
+			break ;
+		case MESSAGE_SERVER_GAME_OVER:
+#if PROTOCOL_VERSION == 0
+			msg.length = 1;
+			msg.body[0] = (u8)arg;
+			info("Game %hhu: Game over, winner: Player %hhu", game->state.game_id, msg.body[0]);
+#elif PROTOCOL_VERSION >= 1
+			msg.length = sizeof(msg_srv_game_over);
+			*(msg_srv_game_over *)msg.body = _msg_srv_game_over( (u8)(arg & 0xFF), (u8)(arg >> 8 & 0xFF), game->state.score);
+#endif /* PROTOCOL_VERSION */
+			break ;
+		case MESSAGE_SERVER_STATE_UPDATE:
+			msg.length = sizeof(msg_srv_state);
+			*(msg_srv_state *)msg.body = _msg_srv_state(game->state.p1_paddle.pos, game->state.p2_paddle.pos,
+					game->state.ball.x, game->state.ball.y, game->state.score);
+	}
+	// Send to player 1
+	if (game->sockets.p1 != -1) {
+		if (send(game->sockets.p1, &msg, MESSAGE_HEADER_SIZE + msg.length, 0) == -1) {
+			if (errno != EPIPE) // Don't die on broken pipe (socket closed by client)
+				Die();
+		}
+	}
+	// Send to player 2
+	if (game->sockets.p2 != -1) {
+		if (send(game->sockets.p2, &msg, MESSAGE_HEADER_SIZE + msg.length, 0) == -1) {
+			if (errno != EPIPE) // Don't die on broken pipe (socket closed by client)
+				Die();
+		}
+	}
+}
+
 static inline void	_sigint_handle([[gnu::unused]] const i32 signum) {
 	___terminate = 1;
 }
@@ -410,7 +454,7 @@ static void	*_run_game(void *arg) {
 	for (check_quit(_game.state, tmp); !tmp; check_quit(_game.state, tmp)) {
 		lock_game(_game.state);
 		if (_game.state.update & GAME_UPDATE_ALLOWED) {
-			send_message(&_game, MESSAGE_SERVER_STATE_UPDATE, 0);
+			send_message_to_players(&_game, MESSAGE_SERVER_STATE_UPDATE, 0);
 			_game.state.update &= ~GAME_UPDATE_SCORE_PENDING;
 		}
 		unlock_game(_game.state);

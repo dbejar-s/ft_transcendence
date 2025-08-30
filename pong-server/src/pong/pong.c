@@ -86,9 +86,9 @@ void	quit_game(game *game, const u8 player) {
 	debug("Game %hhu: Player %hhu quit", game->id, player);
 	lock_game(game->state);
 	if (!player)
-		send_message(game, MESSAGE_SERVER_GAME_OVER, (MESSAGE_SERVER_GAME_OVER_SERVER_CLOSED << 8) | 0);
+		send_message_to_players(game, MESSAGE_SERVER_GAME_OVER, (MESSAGE_SERVER_GAME_OVER_SERVER_CLOSED << 8) | 0);
 	else if (game->state.started)
-		send_message(game, MESSAGE_SERVER_GAME_OVER, (MESSAGE_SERVER_GAME_OVER_ACT_QUIT << 8) | player);
+		send_message_to_players(game, MESSAGE_SERVER_GAME_OVER, (MESSAGE_SERVER_GAME_OVER_ACT_QUIT << 8) | player);
 	game->state.quit = 1;
 	unlock_game(game->state);
 }
@@ -202,8 +202,7 @@ static inline void	_hit_ball(game *game, const u8 player) {
 }
 
 static inline void	_end_game(game *game, const u8 winner) {
-	send_message(game, MESSAGE_SERVER_STATE_UPDATE, 0);
-	send_message(game, MESSAGE_SERVER_GAME_OVER, (MESSAGE_SERVER_GAME_OVER_ACT_WON << 8) | winner);
+	send_message_to_players(game, MESSAGE_SERVER_GAME_OVER, (MESSAGE_SERVER_GAME_OVER_ACT_WON << 8) | winner);
 	game->state.p1_paddle.pos = GAME_FIELD_HEIGHT / 2;
 	game->state.p2_paddle.pos = GAME_FIELD_HEIGHT / 2;
 	game->state.p1_paddle.direction = STOP;
