@@ -111,8 +111,10 @@ void	send_message(const game *game, const u8 message_type, const uintptr_t arg) 
 			*(msg_srv_state *)msg.body = _msg_srv_state(game->state.p1_paddle.pos, game->state.p2_paddle.pos,
 					game->state.ball.x, game->state.ball.y, game->state.score);
 	}
-	if (send(game->sockets.state, &msg, MESSAGE_HEADER_SIZE + msg.length, 0) == -1)
-		Die();
+	if (send(game->sockets.state, &msg, MESSAGE_HEADER_SIZE + msg.length, 0) == -1) {
+		if (errno != EPIPE) // Don't die on broken pipe (socket closed by client)
+			Die();
+	}
 }
 
 void	send_message_to_players(const game *game, const u8 message_type, const uintptr_t arg) {
@@ -204,12 +206,39 @@ static inline void	_get_message(message *msg, const i32 fd) {
 		};
 		return ;
 	}
-	if (rv != MESSAGE_HEADER_SIZE)
+	if (rv != MESSAGE_HEADER_SIZE) {
+		// Handle connection errors gracefully instead of dying
+		if (rv == -1) {
+			if (errno == ECONNRESET || errno == EPIPE || errno == EBADF) {
+				// Client disconnected, treat as quit message
+				*msg = (message){
+					.version = PROTOCOL_VERSION,
+					.type = MESSAGE_CLIENT_QUIT,
+					.length = 0,
+				};
+				return ;
+			}
+		}
+		// For other errors, still die to maintain stability
 		Die();
+	}
 	if (msg->length) {
 		rv = recv(fd, msg->body, (msg->length <= sizeof(msg->body)) ? msg->length : sizeof(msg->body), MSG_WAITALL);
-		if (rv != msg->length)
+		if (rv != msg->length) {
+			// Handle partial reads gracefully
+			if (rv == -1) {
+				if (errno == ECONNRESET || errno == EPIPE || errno == EBADF) {
+					// Client disconnected during body read, treat as quit
+					*msg = (message){
+						.version = PROTOCOL_VERSION,
+						.type = MESSAGE_CLIENT_QUIT,
+						.length = 0,
+					};
+					return ;
+				}
+			}
 			Die();
+		}
 	}
 }
 
