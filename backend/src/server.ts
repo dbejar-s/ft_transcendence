@@ -13,6 +13,7 @@ import { db } from './db/database';
 import { jwtMiddleware } from './jwtMiddleware';
 import { WebSocketServer } from "ws";
 import type WS from "ws";
+import type { ServerResponse } from "http";
 
 // HTTPS configuration
 const httpsOptions = {
@@ -82,6 +83,11 @@ fastify.register(multipart);
 fastify.register(require('@fastify/static'), {
   root: path.join(__dirname, '..', 'uploads'),
   prefix: '/uploads/',
+  setHeaders: (res: ServerResponse, filePath: string) => {
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    res.setHeader("Cross-Origin-Embedder-Policy", "unsafe-none");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+  }
 });
 
 // Routes

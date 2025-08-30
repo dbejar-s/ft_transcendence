@@ -91,7 +91,8 @@ function AnimatedRoutes() {
               username: userData.username,
               email: userData.email,
               avatar: userData.avatar || '/assets/Profile/men1.png',
-              language: userData.language || 'en'
+              language: userData.language || 'en',
+              provider: userData.provider  // Add provider field
             });
           } else {
             // Token is invalid, clear it

@@ -12,6 +12,7 @@ interface Player {
   avatar?: string;
   email?: string;
   language?: string;
+  provider?: string;  // Add provider field
 }
 
 export default function Game() {
@@ -359,7 +360,8 @@ export default function Game() {
             username: userData.username,
             email: userData.email,
             avatar: userData.avatar || '/assets/Profile/men1.png',
-            language: userData.language || 'en'
+            language: userData.language || 'en',
+            provider: userData.provider  // Add provider field
           });
         } catch (error) {
           console.error('[GAME] Error fetching user data:', error);

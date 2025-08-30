@@ -14,7 +14,8 @@ static inline void	_print_message(const char *fmt, va_list args, const char *sgr
 static pthread_mutex_t	log_lock = PTHREAD_MUTEX_INITIALIZER;
 
 [[gnu::noreturn]] void	die(const char *msg) {
-	printf(SGR_FATAL EXEC_NAME ": %s\n" SGR_RESET, msg);
+		fprintf(stderr, "[DIE] Fatal error: %s\n", msg);
+		printf(SGR_FATAL EXEC_NAME ": %s\n" SGR_RESET, msg);
 	exit(1);
 }
 

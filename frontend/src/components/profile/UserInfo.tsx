@@ -14,6 +14,14 @@ interface UserInfoProps {
 
 export default function UserInfo({ initialUser, onProfileUpdated }: UserInfoProps) {
   const { t, i18n } = useTranslation()
+  
+  // Safety guard: don't render if essential data is missing
+  if (!initialUser || !initialUser.id || !initialUser.username || !initialUser.provider) {
+    return <div className="text-center py-8">
+      <div className="text-[#FFFACD] opacity-70">{t("loading") || "Loading user data..."}</div>
+    </div>;
+  }
+  
   const [userData, setUserData] = useState(initialUser)
   const [avatarFile, setAvatarFile] = useState<string | File>(initialUser.avatar)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
@@ -31,11 +39,8 @@ export default function UserInfo({ initialUser, onProfileUpdated }: UserInfoProp
   const [isEditingLanguage, setIsEditingLanguage] = useState(false)
 
   // Check if user is using Google provider (should not edit email/password)
+  // Be defensive - only consider user as Google if provider is explicitly 'google'
   const isGoogleUser = initialUser.provider === 'google'
-  
-  console.log('UserInfo - initialUser:', initialUser);
-  console.log('UserInfo - isGoogleUser:', isGoogleUser);
-  console.log('UserInfo - provider:', initialUser.provider);
 
   useEffect(() => {
     if (initialUser) {

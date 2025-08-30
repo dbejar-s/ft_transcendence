@@ -61,7 +61,7 @@ export async function apiRoutes(fastify: FastifyInstance) {
       
       const regularMatches = regularMatchesStmt.all(user.id, user.id, user.id, user.id, user.id);
       
-      // Get tournament matches
+      // Get tournament matches (exclude manually scored matches)
       const tournamentMatchesStmt = db.prepare(`
         SELECT 
           tm.id,
@@ -90,7 +90,9 @@ export async function apiRoutes(fastify: FastifyInstance) {
         FROM tournament_matches tm
         JOIN users u1 ON tm.player1Id = u1.id
         JOIN users u2 ON tm.player2Id = u2.id
-        WHERE (tm.player1Id = ? OR tm.player2Id = ?) AND tm.status = 'finished'
+        WHERE (tm.player1Id = ? OR tm.player2Id = ?) 
+          AND tm.status = 'finished' 
+          AND (tm.source IS NULL OR tm.source = 'played')
       `);
       
       const tournamentMatches = tournamentMatchesStmt.all(user.id, user.id, user.id, user.id, user.id);

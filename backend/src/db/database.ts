@@ -97,6 +97,7 @@ function initializeDatabase() {
       round INTEGER DEFAULT 1,
       phase TEXT DEFAULT 'round_robin', -- round_robin, winners_bracket, losers_bracket, final_bracket
       status TEXT DEFAULT 'pending', -- pending, finished
+      source TEXT DEFAULT 'played', -- 'played' for real games, 'manual' for manually added scores
       playedAt DATETIME,
       FOREIGN KEY (tournamentId) REFERENCES tournaments(id),
       FOREIGN KEY (player1Id) REFERENCES users(id),
@@ -175,6 +176,14 @@ function initializeDatabase() {
     // Try to add isTemporary column if it doesn't exist
     db.exec('ALTER TABLE users ADD COLUMN isTemporary INTEGER DEFAULT 0');
     console.log('Added isTemporary column to users');
+  } catch (error) {
+    // Column already exists, ignore error
+  }
+
+  try {
+    // Try to add source column to tournament_matches if it doesn't exist
+    db.exec('ALTER TABLE tournament_matches ADD COLUMN source TEXT DEFAULT "played"');
+    console.log('Added source column to tournament_matches');
   } catch (error) {
     // Column already exists, ignore error
   }

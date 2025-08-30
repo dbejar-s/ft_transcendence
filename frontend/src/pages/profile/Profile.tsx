@@ -53,7 +53,7 @@ export default function Profile() {
     };
     
     fetchCurrentUser();
-  }, [hasFetched]); // Only run when hasFetched changes
+  }, [hasFetched, setPlayer]); // Add setPlayer to dependencies
 
   // Set language when player data changes
   useEffect(() => {
@@ -110,7 +110,7 @@ export default function Profile() {
 
       {/* Content */}
       <div className="bg-[#20201d] rounded-xl p-6 shadow-lg border border-[#FFFACD] border-opacity-20">
-        {activeTab === "user" && (
+        {activeTab === "user" && player && player.provider && player.id && player.username && (
           <UserInfo
 			initialUser={{
 				id: player.id,
@@ -118,7 +118,7 @@ export default function Profile() {
 				email: player.email,
 				avatar: player.avatar,
 				language: player.language || 'en',
-				provider: player.provider
+				provider: player.provider  // Don't use fallback - require provider to be defined
 			}}
 			onProfileUpdated={async () => {
 				// Refresh user data only when profile is actually updated
@@ -133,6 +133,12 @@ export default function Profile() {
 				}
 			}}
 		  />
+        )}
+        
+        {activeTab === "user" && (!player || !player.provider || !player.id || !player.username) && (
+          <div className="text-center py-8">
+            <div className="text-[#FFFACD] opacity-70">{t("loading") || "Loading user data..."}</div>
+          </div>
         )}
 
         {activeTab === "friends" && (

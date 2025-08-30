@@ -282,7 +282,7 @@ export async function tournamentRoutes(fastify: FastifyInstance) {
       // Update match result
       const updateMatch = db.prepare(`
         UPDATE tournament_matches
-        SET player1Score = ?, player2Score = ?, winnerId = ?, status = 'finished', playedAt = CURRENT_TIMESTAMP
+        SET player1Score = ?, player2Score = ?, winnerId = ?, status = 'finished', source = 'manual', playedAt = CURRENT_TIMESTAMP
         WHERE id = ?
       `);
       updateMatch.run(player1Score, player2Score, winnerId, matchId);
