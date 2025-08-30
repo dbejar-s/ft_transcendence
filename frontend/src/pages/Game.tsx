@@ -58,7 +58,7 @@ export default function Game() {
   // Function to handle score updates from GameDisplay
   const handleScoreUpdate = (p1Score: number, p2Score: number) => {
 	// Invert scores because wsPlayer1 is player 2 and wsPlayer2 is player 1
-    setScores({ p2: p1Score, p1: p2Score });
+    setScores({ p1: p1Score, p2: p2Score });
   };
 
   // Function to check if the current logged-in player is actually playing in this match
@@ -177,13 +177,13 @@ export default function Game() {
             if (ws && ws.readyState === WebSocket.OPEN) {
               const buffer = new ArrayBuffer(4);
               const view = new DataView(buffer);
-              const PROTOCOL_VERSION = 0;
+              const PROTOCOL_VERSION = 1;
               const MESSAGE_TYPE_QUIT = 3;
               const bodyLength = 0;
 
               view.setUint8(0, PROTOCOL_VERSION);
               view.setUint8(1, MESSAGE_TYPE_QUIT);
-              view.setUint16(2, bodyLength, false); // Big Endian
+              view.setUint16(2, bodyLength, true); // Little Endian
               ws.send(buffer);
             }
           };
@@ -199,13 +199,13 @@ export default function Game() {
             // Format: 1 byte version, 1 byte type, 2 bytes length. No body.
             const buffer = new ArrayBuffer(4);
             const view = new DataView(buffer);
-            const PROTOCOL_VERSION = 0;
+            const PROTOCOL_VERSION = 1;
             const MESSAGE_CLIENT_START = 0; // Type 0 is START
             const bodyLength = 0;
 
             view.setUint8(0, PROTOCOL_VERSION);
             view.setUint8(1, MESSAGE_CLIENT_START);
-            view.setUint16(2, bodyLength, false); // Big Endian
+            view.setUint16(2, bodyLength, true); // Little Endian
             ws.send(buffer);
         };
 
@@ -236,18 +236,18 @@ export default function Game() {
 		if (wsPlayer1) {
 		const buffer = new ArrayBuffer(4);
 		const view = new DataView(buffer);
-		view.setUint8(0, 0);
+		view.setUint8(0, 1);
 		view.setUint8(1, 3); // QUIT
-		view.setUint16(2, 0, false);
+		view.setUint16(2, 0, true);
 		wsPlayer1.send(buffer);
 		wsPlayer1.close();
 		}
 		if (wsPlayer2) {
 		const buffer = new ArrayBuffer(4);
 		const view = new DataView(buffer);
-		view.setUint8(0, 0);
+		view.setUint8(0, 1);
 		view.setUint8(1, 3); // QUIT
-		view.setUint16(2, 0, false);
+		view.setUint16(2, 0, true);
 		wsPlayer2.send(buffer);
 		wsPlayer2.close();
 		}

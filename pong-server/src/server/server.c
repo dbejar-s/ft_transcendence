@@ -6,21 +6,21 @@
 // ╚═╝        ╚═╝╚══════╝╚═╝      ╚═════╝    ╚═╝    ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝
 //
 // <<server.c>>
-// pong-server/src/server/server.c
 
 #include "pong/pong.h"
 #include "server/server.h"
 #include "utils/vector.h"
 
-static pthread_mutex_t	___terminate_lock = PTHREAD_MUTEX_INITIALIZER;
+#define atomic _Atomic
+
 static pthread_mutex_t	gamelist_lock = PTHREAD_MUTEX_INITIALIZER;
 static const char		*server_message_type_strings[] = {"Game init", "Game paused", "Game over", "State update"};
 static const char		*address;
 static pthread_t		t0;
 static socklen_t		addr_length;
-static size_t			game_count;
+static atomic u8		___terminate = 0;
 static vector			active_games;
-static u8				___terminate = 0;
+static size_t			game_count;
 
 static const struct addrinfo	hints = {
 	.ai_family = AF_INET,
@@ -44,7 +44,7 @@ static const struct addrinfo	hints = {
 static inline void	_sigint_handle([[gnu::unused]] const i32 signum);
 static inline void	_terminate(const vector main_threads);
 static inline void	_host_game(const i32 cfd, vector main_threads);
-static inline void	_get_message(message *message_buf, const i32 fd);
+static inline void	_get_message(message *msg, const i32 fd);
 static inline void	_assign_ports(game *game);
 static inline i32	_open_socket(const char *port);
 static inline i32	_connect_client(const i32 lfd);
@@ -60,7 +60,7 @@ static void			*_run_game(void *arg);
 	address = addr;
 	t0 = pthread_self();
 	lfd = _open_socket(port);
-	active_games = vector(game *, 25, free);
+	active_games = vector(game *, 25, NULL);
 	main_threads = vector(pthread_t, 25, NULL);
 	if (!active_games || !main_threads)
 		Die();
@@ -85,76 +85,84 @@ static void			*_run_game(void *arg);
 
 void	send_message(const game *game, const u8 message_type, const uintptr_t arg) {
 	message	msg;
-    ssize_t len;
 
-	// For GAME_INIT, force version 0 to match backend expectation
-	if (message_type == MESSAGE_SERVER_GAME_INIT)
-		msg = (message){.version = 0, .type = message_type};
-	else
-		msg = (message){.version = PROTOCOL_VERSION, .type = message_type};
+	msg = (message){.version = PROTOCOL_VERSION, .type = message_type};
 	debug("Game %hhu: Sending message: %s", game->id, server_message_type_strings[message_type]);
 	switch (message_type) {
-		case MESSAGE_SERVER_GAME_INIT: {
-			// Build a raw buffer with header fields in network byte order
-			u8 buf[8];
-			buf[0] = 0; // version
-			buf[1] = MESSAGE_SERVER_GAME_INIT; // type
-			u16 len = htons(4); // length (body is 4 bytes)
-			memcpy(buf + 2, &len, 2);
-			u16 p1 = htons(game->ports.p1);
-			u16 p2 = htons(game->ports.p2);
-			memcpy(buf + 4, &p1, 2);
-			memcpy(buf + 6, &p2, 2);
-			// Debug print the raw bytes to be sent
-			fprintf(stderr, "[DEBUG] GAME_INIT message bytes: ");
-			for (int i = 0; i < 8; ++i) {
-				fprintf(stderr, "%02x ", buf[i]);
-			}
-			fprintf(stderr, "\n");
-			if (send(game->sockets.state, buf, 8, 0) == -1) Die();
-			return;
-		}
+		case MESSAGE_SERVER_GAME_INIT:
+			msg.length = sizeof(msg_srv_init);
+			*(msg_srv_init *)msg.body = _msg_srv_init(game->ports.p1, game->ports.p2);
+			break ;
 		case MESSAGE_SERVER_GAME_PAUSED:
 			msg.length = 0;
 			break ;
 		case MESSAGE_SERVER_GAME_OVER:
-			#if PROTOCOL_VERSION == 0
+#if PROTOCOL_VERSION == 0
 			msg.length = 1;
 			msg.body[0] = (u8)arg;
-			// info("Game %hhu: Game over, winner: Player %hhu", game->state.game_id, msg.body[0]);
-			#elif PROTOCOL_VERSION >= 1
+			info("Game %hhu: Game over, winner: Player %hhu", game->state.game_id, msg.body[0]);
+#elif PROTOCOL_VERSION >= 1
 			msg.length = sizeof(msg_srv_game_over);
 			*(msg_srv_game_over *)msg.body = _msg_srv_game_over( (u8)(arg & 0xFF), (u8)(arg >> 8 & 0xFF), game->state.score);
-			#endif /* PROTOCOL_VERSION */
+#endif /* PROTOCOL_VERSION */
 			break ;
 		case MESSAGE_SERVER_STATE_UPDATE:
 			msg.length = sizeof(msg_srv_state);
 			*(msg_srv_state *)msg.body = _msg_srv_state(game->state.p1_paddle.pos, game->state.p2_paddle.pos,
 					game->state.ball.x, game->state.ball.y, game->state.score);
 	}
-    len = MESSAGE_HEADER_SIZE + msg.length;
+	if (send(game->sockets.state, &msg, MESSAGE_HEADER_SIZE + msg.length, 0) == -1) {
+		if (errno != EPIPE) // Don't die on broken pipe (socket closed by client)
+			Die();
+	}
+}
 
-    if (message_type == MESSAGE_SERVER_GAME_INIT) {
-        if (send(game->sockets.state, &msg, len, 0) == -1) Die();
-        return;
-    }
+void	send_message_to_players(const game *game, const u8 message_type, const uintptr_t arg) {
+	message	msg;
 
-    if (game->sockets.p1 != -1) {
-        if (send(game->sockets.p1, &msg, len, 0) == -1) {
-             error("Failed to send message to player 1");
-        }
-    }
-    if (game->sockets.p2 != -1) {
-        if (send(game->sockets.p2, &msg, len, 0) == -1) {
-             error("Failed to send message to player 2");
-        }
-    }
+	msg = (message){.version = PROTOCOL_VERSION, .type = message_type};
+	debug("Game %hhu: Sending message to players: %s", game->id, server_message_type_strings[message_type]);
+	switch (message_type) {
+		case MESSAGE_SERVER_GAME_INIT:
+			msg.length = sizeof(msg_srv_init);
+			*(msg_srv_init *)msg.body = _msg_srv_init(game->ports.p1, game->ports.p2);
+			break ;
+		case MESSAGE_SERVER_GAME_PAUSED:
+			msg.length = 0;
+			break ;
+		case MESSAGE_SERVER_GAME_OVER:
+#if PROTOCOL_VERSION == 0
+			msg.length = 1;
+			msg.body[0] = (u8)arg;
+			info("Game %hhu: Game over, winner: Player %hhu", game->state.game_id, msg.body[0]);
+#elif PROTOCOL_VERSION >= 1
+			msg.length = sizeof(msg_srv_game_over);
+			*(msg_srv_game_over *)msg.body = _msg_srv_game_over( (u8)(arg & 0xFF), (u8)(arg >> 8 & 0xFF), game->state.score);
+#endif /* PROTOCOL_VERSION */
+			break ;
+		case MESSAGE_SERVER_STATE_UPDATE:
+			msg.length = sizeof(msg_srv_state);
+			*(msg_srv_state *)msg.body = _msg_srv_state(game->state.p1_paddle.pos, game->state.p2_paddle.pos,
+					game->state.ball.x, game->state.ball.y, game->state.score);
+	}
+	// Send to player 1
+	if (game->sockets.p1 != -1) {
+		if (send(game->sockets.p1, &msg, MESSAGE_HEADER_SIZE + msg.length, 0) == -1) {
+			if (errno != EPIPE) // Don't die on broken pipe (socket closed by client)
+				Die();
+		}
+	}
+	// Send to player 2
+	if (game->sockets.p2 != -1) {
+		if (send(game->sockets.p2, &msg, MESSAGE_HEADER_SIZE + msg.length, 0) == -1) {
+			if (errno != EPIPE) // Don't die on broken pipe (socket closed by client)
+				Die();
+		}
+	}
 }
 
 static inline void	_sigint_handle([[gnu::unused]] const i32 signum) {
-	pthread_mutex_lock(&___terminate_lock);
 	___terminate = 1;
-	pthread_mutex_unlock(&___terminate_lock);
 }
 
 static inline void	_terminate(const vector main_threads) {
@@ -182,20 +190,16 @@ static inline void	_host_game(const i32 cfd, vector main_threads) {
 		Die();
 }
 
-static inline void	_get_message(message *message_buf, const i32 fd) {
+static inline void	_get_message(message *msg, const i32 fd) {
 	ssize_t	rv;
 	u8		_terminate;
 
-	rv = recv(fd, message_buf, MESSAGE_HEADER_SIZE, MSG_WAITALL);
-	// Convert length from network to host byte order
-	message_buf->length = ntohs(message_buf->length);
-	pthread_mutex_lock(&___terminate_lock);
+	rv = recv(fd, msg, MESSAGE_HEADER_SIZE, MSG_WAITALL);
 	_terminate = ___terminate;
-	pthread_mutex_unlock(&___terminate_lock);
 	if (_terminate)
 		pthread_exit(NULL);
 	if (rv == 0) {
-		*message_buf = (message){
+		*msg = (message){
 			.version = PROTOCOL_VERSION,
 			.type = MESSAGE_CLIENT_QUIT,
 			.length = 0,
@@ -203,14 +207,37 @@ static inline void	_get_message(message *message_buf, const i32 fd) {
 		return ;
 	}
 	if (rv != MESSAGE_HEADER_SIZE) {
-		fprintf(stderr, "[DIE DEBUG] _get_message: recv header failed, rv=%zd, expected=%d, errno=%d\n", rv, MESSAGE_HEADER_SIZE, errno);
-		die("_get_message: did not receive full message header");
+		// Handle connection errors gracefully instead of dying
+		if (rv == -1) {
+			if (errno == ECONNRESET || errno == EPIPE || errno == EBADF) {
+				// Client disconnected, treat as quit message
+				*msg = (message){
+					.version = PROTOCOL_VERSION,
+					.type = MESSAGE_CLIENT_QUIT,
+					.length = 0,
+				};
+				return ;
+			}
+		}
+		// For other errors, still die to maintain stability
+		Die();
 	}
-	if (message_buf->length) {
-		rv = recv(fd, message_buf->body, message_buf->length, MSG_WAITALL);
-		if (rv != message_buf->length) {
-			fprintf(stderr, "[DIE DEBUG] _get_message: recv body failed, rv=%zd, expected=%hu, errno=%d\n", rv, message_buf->length, errno);
-			die("_get_message: did not receive full message body");
+	if (msg->length) {
+		rv = recv(fd, msg->body, (msg->length <= sizeof(msg->body)) ? msg->length : sizeof(msg->body), MSG_WAITALL);
+		if (rv != msg->length) {
+			// Handle partial reads gracefully
+			if (rv == -1) {
+				if (errno == ECONNRESET || errno == EPIPE || errno == EBADF) {
+					// Client disconnected during body read, treat as quit
+					*msg = (message){
+						.version = PROTOCOL_VERSION,
+						.type = MESSAGE_CLIENT_QUIT,
+						.length = 0,
+					};
+					return ;
+				}
+			}
+			Die();
 		}
 	}
 }
@@ -230,25 +257,13 @@ static inline void	_assign_ports(game *game) {
 		set_non_blocking(p1_sfd) == -1 || set_non_blocking(p2_sfd) == -1)
 		Die();
 	addr_length = sizeof(addr);
-	if (getsockname(p1_sfd, (struct sockaddr *)&addr, &addr_length) == -1) {
-		error("getsockname failed for p1_sfd");
+	if (getsockname(p1_sfd, (struct sockaddr *)&addr, &addr_length) == -1)
 		Die();
-	}
 	game->ports.p1 = ntohs(addr.sin_port);
-	if (game->ports.p1 == 0) {
-		error("Assigned port for player 1 is 0 (invalid)");
-		Die();
-	}
 	addr_length = sizeof(addr);
-	if (getsockname(p2_sfd, (struct sockaddr *)&addr, &addr_length) == -1) {
-		error("getsockname failed for p2_sfd");
+	if (getsockname(p2_sfd, (struct sockaddr *)&addr, &addr_length) == -1)
 		Die();
-	}
 	game->ports.p2 = ntohs(addr.sin_port);
-	if (game->ports.p2 == 0) {
-		error("Assigned port for player 2 is 0 (invalid)");
-		Die();
-	}
 	events[0] = (struct epoll_event){
 		.events = EPOLLIN,
 		.data.fd = p1_sfd
@@ -260,7 +275,6 @@ static inline void	_assign_ports(game *game) {
 		Die();
 	info("Game %hhu: Assigning ports for players:", game->id);
 	info("\tPlayer 1: %hu\n\tPlayer 2: %hu", game->ports.p1, game->ports.p2);
-	debug("Game %hhu: About to send GAME_INIT message with ports: p1=%hu, p2=%hu", game->id, game->ports.p1, game->ports.p2);
 	send_message(game, MESSAGE_SERVER_GAME_INIT, 0);
 	game->sockets.p1 = -1;
 	game->sockets.p2 = -1;
@@ -299,10 +313,7 @@ static inline i32	_open_socket(const char *port) {
 	struct addrinfo		*cur_address;
 	i32					out;
 
-	if (port == NULL)
-		debug("Opening socket on %s:%s", address, "ephemeral");
-	else
-		debug("Opening socket on %s:%s", address, port);
+	debug("Opening socket on %s:%s", address, port);
 	if (getaddrinfo(address, port, &hints, &addresses) != 0)
 		Die();
 	for (cur_address = addresses; cur_address != NULL; cur_address = cur_address->ai_next) {
@@ -366,13 +377,13 @@ static void	*_player_io(void *arg) {
 		event_count = epoll_wait(game->epoll_instance, events, MAX_EVENTS, -1);
 		for (i = 0; i < event_count; i++) {
 			player = (events[i].data.fd == game->sockets.p1) ? GAME_PLAYER_1 : GAME_PLAYER_2;
+			debug("Game %hhu: New message received from player %hhu", game->id, player);
 			message = &messages[(player == GAME_PLAYER_1) ? 0 : 1];
 			_get_message(message, events[i].data.fd);
-			debug("Game %hhu: New message received from player %hhu: type=%hhu, length=%hu, body[0]=%hhu", game->id, player, message->type, message->length, message->body[0]);
-			// Print full message body for debugging
-			fprintf(stderr, "[DEBUG] Received from player %hhu: type=%hhu, length=%hu, body=", player, message->type, message->length);
-			for (int b = 0; b < message->length; ++b) fprintf(stderr, "%02x ", message->body[b]);
-			fprintf(stderr, "\n");
+			if (message->version != PROTOCOL_VERSION) {
+				quit_game(game, 0);
+				return NULL;
+			}
 			switch (message->type) {
 				case MESSAGE_CLIENT_START:
 					unpause_game(game, player);
@@ -381,12 +392,7 @@ static void	*_player_io(void *arg) {
 					pause_game(game, player);
 					break ;
 				case MESSAGE_CLIENT_MOVE_PADDLE:
-					if (message->length < 1) {
-						debug("Game %hhu: Player %hhu sent paddle move with invalid length: %hu", game->id, player, message->length);
-						fprintf(stderr, "[DIE DEBUG] MESSAGE_CLIENT_MOVE_PADDLE: invalid length %hu from player %hhu\n", message->length, player);
-						die("MESSAGE_CLIENT_MOVE_PADDLE: invalid message length");
-					}
-					switch (message->body[0]) {
+					switch (*message->body) {
 						case MESSAGE_CLIENT_MOVE_PADDLE_UP:
 							move_paddle(game, player, UP);
 							break ;
@@ -397,18 +403,14 @@ static void	*_player_io(void *arg) {
 							move_paddle(game, player, STOP);
 							break ;
 						default: // INVALID MESSAGE BODY
-							debug("Game %hhu: Player %hhu sent invalid paddle move: %hhu", game->id, player, message->body[0]);
-							fprintf(stderr, "[DIE DEBUG] MESSAGE_CLIENT_MOVE_PADDLE: invalid body value %hhu from player %hhu\n", message->body[0], player);
-							die("MESSAGE_CLIENT_MOVE_PADDLE: invalid paddle move value");
+							;
 					}
 					break ;
 				case MESSAGE_CLIENT_QUIT:
 					quit_game(game, player);
 					return NULL;
 				default: // INVALID MESSAGE TYPE
-					debug("Game %hhu: Player %hhu sent invalid message type: %hhu", game->id, player, message->type);
-					fprintf(stderr, "[DIE DEBUG] _player_io: invalid message type %hhu from player %hhu\n", message->type, player);
-					die("_player_io: invalid message type");
+					;
 			}
 		}
 	}
@@ -420,25 +422,14 @@ static void	*_run_game(void *arg) {
 	sigset_t			sigs;
 	size_t				size;
 	size_t				i;
-	game				*_game;
+	game				_game;
 	u8					tmp;
-
-	fprintf(stderr, "[DEBUG] Allocating memory for game struct...\n");
-	_game = malloc(sizeof(game));
-	fprintf(stderr, "[DEBUG] malloc returned %p\n", (void*)_game);
-	if (!_game) {
-		fprintf(stderr, "[DEBUG] malloc failed!\n");
-		close((i32)(uintptr_t)arg);
-		return NULL;
-	}
 
 	sigemptyset(&sigs);
 	sigaddset(&sigs, SIGTERM);
 	pthread_sigmask(SIG_BLOCK, &sigs, NULL);
 	pthread_mutex_lock(&gamelist_lock);
-
-	fprintf(stderr, "[DEBUG] Initializing *(_game) fields...\n");
-	*_game = (game){
+	_game = (game){
 		.state = (state){
 			.lock = PTHREAD_MUTEX_INITIALIZER,
 			.p1_paddle.pos = GAME_FIELD_HEIGHT / 2,
@@ -457,80 +448,71 @@ static void	*_run_game(void *arg) {
 			.quit = 0
 		},
 		.threads.game_master = pthread_self(),
-		.threads.game_loop = (pthread_t)-1,
-		.threads.player_io = (pthread_t)-1,
+		.threads.game_loop = -1,
+		.threads.player_io = -1,
 		.sockets.state = (i32)(uintptr_t)arg
 	};
-
-	fprintf(stderr, "[DEBUG] Searching for insert index in active_games...\n");
-	for (i = 0, size = vector_size(active_games); i < size; i++) {
-		game *gptr = *(game **)vector_get(active_games, i);
-		fprintf(stderr, "[DEBUG] active_games[%zu] = %p\n", i, (void*)gptr);
-		if (gptr && gptr->id > i)
+	for (i = 0, size = vector_size(active_games); i < size; i++)
+		if ((*(game **)vector_get(active_games, i))->id > i)
 			break ;
-	}
-	fprintf(stderr, "[DEBUG] Inserting _game (%p) into active_games at index %zu...\n", (void*)_game, i);
-	if (!vector_insert(active_games, i, _game)) {
-		fprintf(stderr, "[DEBUG] vector_insert failed!\n");
+	if (!vector_insert(active_games, i, (game *){&_game}))
 		Die();
-	}
-	_game->id = i;
-	fprintf(stderr, "[DEBUG] _game->id set to %zu\n", i);
+	_game.id = i;
 	pthread_mutex_unlock(&gamelist_lock);
-	debug("Game %hhu: Starting init", _game->id);
-	debug("Game %hhu: Creating epoll instance", _game->id);
-	_game->epoll_instance = epoll_create(1);
-	if (_game->epoll_instance == -1)
+	debug("Game %hhu: Starting init", _game.id);
+	debug("Game %hhu: Creating epoll instance", _game.id);
+	_game.epoll_instance = epoll_create(1);
+	if (_game.epoll_instance == -1)
 		Die();
-	_assign_ports(_game);
-	if (!_game->state.quit) {
+	_assign_ports(&_game);
+	if (!_game.state.quit) {
 		ev = (struct epoll_event){
 			.events = EPOLLIN,
-				.data.fd = _game->sockets.p1
+			.data.fd = _game.sockets.p1
 		};
-		if (epoll_ctl(_game->epoll_instance, EPOLL_CTL_ADD, _game->sockets.p1, &ev) == -1)
+		if (epoll_ctl(_game.epoll_instance, EPOLL_CTL_ADD, _game.sockets.p1, &ev) == -1)
 			Die();
-		ev.data.fd = _game->sockets.p2;
-		if (epoll_ctl(_game->epoll_instance, EPOLL_CTL_ADD, _game->sockets.p2, &ev) == -1)
+		ev.data.fd = _game.sockets.p2;
+		if (epoll_ctl(_game.epoll_instance, EPOLL_CTL_ADD, _game.sockets.p2, &ev) == -1)
 			Die();
-		debug("Game %hhu: Creating threads", _game->id);
-		if (pthread_create(&_game->threads.game_loop, NULL, pong, _game) == -1 ||
-				pthread_create(&_game->threads.player_io, NULL, _player_io, _game) == -1)
+		debug("Game %hhu: Creating threads", _game.id);
+		if (pthread_create(&_game.threads.game_loop, NULL, pong, &_game) == -1 ||
+			pthread_create(&_game.threads.player_io, NULL, _player_io, &_game) == -1)
 			Die();
 	}
-	for (check_quit(_game->state, tmp); !tmp; check_quit(_game->state, tmp)) {
-		lock_game(_game->state);
-		if (_game->state.update & GAME_UPDATE_ALLOWED) {
-			send_message(_game, MESSAGE_SERVER_STATE_UPDATE, 0);
-			_game->state.update &= ~GAME_UPDATE_SCORE_PENDING;
+	for (check_quit(_game.state, tmp); !tmp; check_quit(_game.state, tmp)) {
+		lock_game(_game.state);
+		if (_game.state.update & GAME_UPDATE_ALLOWED) {
+			send_message_to_players(&_game, MESSAGE_SERVER_STATE_UPDATE, 0);
+			_game.state.update &= ~GAME_UPDATE_SCORE_PENDING;
 		}
-		unlock_game(_game->state);
+		unlock_game(_game.state);
 		usleep(16666);
 	}
-	lock_game(_game->state);
-	debug("Game %1$hhu: Starting cleanup\nGame %1$hhu: Joining player IO thread", _game->id);
-	if (!pthread_equal(_game->threads.player_io, (pthread_t)-1)) {
-		pthread_cancel(_game->threads.player_io);
-		pthread_join(_game->threads.player_io, NULL);
+	lock_game(_game.state);
+	debug("Game %1$hhu: Starting cleanup\nGame %1$hhu: Joining player IO thread", _game.id);
+	if (!pthread_equal(_game.threads.player_io, -1)) {
+		pthread_cancel(_game.threads.player_io);
+		pthread_join(_game.threads.player_io, NULL);
 	}
-	debug("Game %hhu: Joining game thread", _game->id);
-	if (!pthread_equal(_game->threads.game_loop, (pthread_t)-1)) {
-		pthread_cancel(_game->threads.game_loop);
-		pthread_join(_game->threads.game_loop, NULL);
+	debug("Game %hhu: Joining game thread", _game.id);
+	if (!pthread_equal(_game.threads.game_loop, -1)) {
+		pthread_cancel(_game.threads.game_loop);
+		pthread_join(_game.threads.game_loop, NULL);
 	}
-	unlock_game(_game->state);
-	pthread_mutex_destroy(&_game->state.lock);
-	debug("Game %hhu: Destroying epoll instance", _game->id);
-	close(_game->epoll_instance);
-	debug("Game %hhu: Closing sockets", _game->id);
-	close(_game->sockets.state);
-	if (_game->sockets.p2 != -1)
-		close(_game->sockets.p2);
-	if (_game->sockets.p1 != -1)
-		close(_game->sockets.p1);
+	unlock_game(_game.state);
+	pthread_mutex_destroy(&_game.state.lock);
+	debug("Game %hhu: Destroying epoll instance", _game.id);
+	close(_game.epoll_instance);
+	debug("Game %hhu: Closing sockets", _game.id);
+	close(_game.sockets.state);
+	if (_game.sockets.p2 != -1)
+		close(_game.sockets.p2);
+	if (_game.sockets.p1 != -1)
+		close(_game.sockets.p1);
 	pthread_mutex_lock(&gamelist_lock);
 	for (i = 0; i < vector_size(active_games); i++) {
-		if ((*(game **)vector_get(active_games, i))->id == _game->id) {
+		if ((*(game **)vector_get(active_games, i))->id == _game.id) {
 			vector_erase(active_games, i);
 			break ;
 		}

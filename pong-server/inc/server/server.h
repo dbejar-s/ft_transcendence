@@ -36,3 +36,4 @@
 [[gnu::noreturn]] void	run_server(const char *address, const char *port);
 
 void	send_message(const game *game, const u8 message_type, const uintptr_t arg);
+void	send_message_to_players(const game *game, const u8 message_type, const uintptr_t arg);

@@ -12,7 +12,14 @@ let gameIdCounter = 0;
 
 export async function matchRoutes(fastify: FastifyInstance) {
 
-  fastify.post('/start', { preHandler: [jwtMiddleware] }, async (request, reply) => {
+  fastify.post('/start', { 
+    preHandler: async (request, reply) => {
+      const params = request.params as any;
+      if (params.userId !== 'guest') {
+        await jwtMiddleware(request, reply);
+      }
+    }
+  }, async (request, reply) => {
     const params = request.params as any;
     const userId = params.userId;
 
@@ -42,7 +49,7 @@ export async function matchRoutes(fastify: FastifyInstance) {
 
       client.connect(4000, 'pong-server', () => {
         console.log('Backend connected to pong-server to request a new game.');
-        const PROTOCOL_VERSION = 0;
+        const PROTOCOL_VERSION = 1;
         const MESSAGE_CLIENT_START = 0; // This tells the server to create a new game
         const startMsg = Buffer.alloc(4);
         startMsg.writeUInt8(PROTOCOL_VERSION, 0);
@@ -57,12 +64,18 @@ export async function matchRoutes(fastify: FastifyInstance) {
         // The C server responds with a GAME_INIT message.
         // Header: 1 byte version, 1 byte type, 2 bytes length.
         // Body: 2 bytes p1_port, 2 bytes p2_port. Total message size is 8 bytes.
-        if (data.length >= 8 && data.readUInt8(1) === 0 && data.readUInt16BE(2) === 4) {
+        const receivedVersion = data.readUInt8(0);
+        const messageType = data.readUInt8(1);
+        const messageLength = data.readUInt16LE(2); // Changed from BE to LE
+        
+        console.log(`Received message: version=${receivedVersion}, type=${messageType}, length=${messageLength}, dataLength=${data.length}`);
+        
+        if (data.length >= 8 && receivedVersion >= 0 && receivedVersion <= 1 && messageType === 0 && messageLength === 4) {
           // **THE FIX IS HERE:**
           // Correctly read the port numbers from the binary buffer.
           // The body starts at offset 4. Each port is a Big Endian unsigned 16-bit integer.
-          const player1TcpPort = data.readUInt16BE(4);
-          const player2TcpPort = data.readUInt16BE(6);
+          const player1TcpPort = data.readUInt16LE(4); // Changed from BE to LE
+          const player2TcpPort = data.readUInt16LE(6); // Changed from BE to LE
           console.log(`Received ports from pong-server: P1=${player1TcpPort}, P2=${player2TcpPort}`);
 
           client.destroy();
@@ -83,7 +96,7 @@ export async function matchRoutes(fastify: FastifyInstance) {
             })
           );
         } else {
-          console.error('Received malformed or unexpected message from pong-server.');
+          console.error(`Received malformed or unexpected message from pong-server. Expected: version=0-1, type=0, length=4, got: version=${receivedVersion}, type=${messageType}, length=${messageLength}`);
           client.destroy();
           if (!resolved) {
             resolved = true;
@@ -102,7 +115,7 @@ export async function matchRoutes(fastify: FastifyInstance) {
         }
       });
 
-      client.on('error', (err) => {
+      client.on('error', (err: Error) => {
         console.error('Backend error connecting to pong-server:', err);
         client.destroy();
         if (!resolved) {
